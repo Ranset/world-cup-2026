@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#1B1464"/>
+
+  <!-- Gold outer ring -->
+  <circle cx="256" cy="256" r="230" fill="none" stroke="#D4AF37" stroke-width="12"/>
+
+  <!-- Trophy shape simplified -->
+  <rect x="208" y="120" width="96" height="10" rx="5" fill="#D4AF37"/>
+  <path d="M 208 130 Q 190 180 200 220 Q 220 260 256 270 Q 292 260 312 220 Q 322 180 304 130 Z"
+        fill="none" stroke="#D4AF37" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Trophy handles -->
+  <path d="M 208 155 Q 172 155 172 185 Q 172 215 208 215" fill="none" stroke="#D4AF37" stroke-width="7"/>
+  <path d="M 304 155 Q 340 155 340 185 Q 340 215 304 215" fill="none" stroke="#D4AF37" stroke-width="7"/>
+  <!-- Trophy stem -->
+  <rect x="240" y="268" width="32" height="50" rx="4" fill="#D4AF37"/>
+  <rect x="216" y="316" width="80" height="14" rx="7" fill="#D4AF37"/>
+
+  <!-- Year text -->
+  <text x="256" y="410" text-anchor="middle"
+        font-family="'Arial Black', sans-serif" font-size="56" font-weight="900"
+        fill="#D4AF37" letter-spacing="2">2026</text>
+
+  <!-- "WORLD CUP" text -->
+  <text x="256" y="460" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="26" font-weight="bold"
+        fill="white" letter-spacing="4">WORLD CUP</text>
+</svg>

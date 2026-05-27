@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="theme-color" content="#1B1464"/>
+  <meta name="description" content="World Cup 2026 – Resultados, Grupos, Eliminatorias y Pronósticos. México, USA y Canadá."/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="WC 2026"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <title>World Cup 2026</title>
+
+  <link rel="manifest"        href="./manifest.json"/>
+  <link rel="icon"            href="./icons/icon.svg" type="image/svg+xml"/>
+  <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
+  <link rel="stylesheet"       href="./css/style.css"/>
+
+  <!-- jsPDF – cargado antes que los scripts de la app -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════════════╗
+     ║           SPLASH SCREEN                       ║
+     ╚══════════════════════════════════════════════╝ -->
+<div id="splash">
+  <div class="splash-logo">
+    <img
+      src="https://upload.wikimedia.org/wikipedia/en/d/d1/2026_FIFA_World_Cup_emblem.svg"
+      alt="FIFA World Cup 2026"
+      onerror="this.src='./icons/icon.svg'"/>
+  </div>
+  <div class="splash-title">WORLD CUP</div>
+  <div class="splash-subtitle">México &nbsp;·&nbsp; USA &nbsp;·&nbsp; Canadá &nbsp;·&nbsp; 2026</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════╗
+     ║              APP SHELL                        ║
+     ╚══════════════════════════════════════════════╝ -->
+<div id="app">
+
+  <!-- ── TOP HEADER ─────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-brand">
+      <img class="header-logo"
+        src="https://upload.wikimedia.org/wikipedia/en/d/d1/2026_FIFA_World_Cup_emblem.svg"
+        alt="WC 2026"
+        onerror="this.style.display='none'"/>
+      <div class="header-title">WORLD CUP <span>2026</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" title="Exportar PDF" onclick="exportPredictionsPDF()">📄</button>
+      <button class="header-btn" title="Ingresar resultado" onclick="openQuickAdd()">➕</button>
+    </div>
+  </header>
+
+  <!-- ── MAIN VIEW AREA ─────────────────────────── -->
+  <main class="main-content">
+    <div id="view-container"></div>
+  </main>
+
+  <!-- ── BOTTOM NAVIGATION ──────────────────────── -->
+  <nav class="bottom-nav" role="navigation" aria-label="Navegación principal">
+    <button class="nav-btn active" data-view="home"        aria-label="Inicio">
+      <span class="nav-icon">🏠</span>Inicio
+    </button>
+    <button class="nav-btn"        data-view="calendar"    aria-label="Partidos">
+      <span class="nav-icon">📅</span>Partidos
+    </button>
+    <button class="nav-btn"        data-view="groups"      aria-label="Grupos">
+      <span class="nav-icon">📊</span>Grupos
+    </button>
+    <button class="nav-btn"        data-view="bracket"     aria-label="Eliminatorias">
+      <span class="nav-icon">🏆</span>Llaves
+    </button>
+    <button class="nav-btn"        data-view="predictions" aria-label="Mi Pronóstico">
+      <span class="nav-icon">🎯</span>Pronóst.
+    </button>
+    <button class="nav-btn"        data-view="stats"       aria-label="Estadísticas">
+      <span class="nav-icon">📈</span>Stats
+    </button>
+  </nav>
+
+</div><!-- /#app -->
+
+<!-- ╔══════════════════════════════════════════════╗
+     ║        SCORE EDITOR MODAL (bottom sheet)      ║
+     ╚══════════════════════════════════════════════╝ -->
+<div id="edit-modal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+
+    <!-- Title – updated by JS with team names -->
+    <div class="modal-title" id="modal-title">EDITAR RESULTADO</div>
+
+    <!-- Score editor grid -->
+    <div class="score-editor">
+
+      <!-- Home team -->
+      <div class="score-team-info">
+        <div class="score-team-flag" id="modal-home-flag">🏳</div>
+        <div class="score-team-name" id="modal-home-name">Local</div>
+        <div class="score-input-group" style="margin-top:10px">
+          <input type="number" id="score-home" class="score-input"
+                 min="0" max="30" placeholder="0"
+                 inputmode="numeric" pattern="[0-9]*"/>
+          <span class="score-input-label">Goles</span>
+        </div>
+      </div>
+
+      <div class="score-dash">–</div>
+
+      <!-- Away team -->
+      <div class="score-team-info">
+        <div class="score-team-flag" id="modal-away-flag">🏳</div>
+        <div class="score-team-name" id="modal-away-name">Visitante</div>
+        <div class="score-input-group" style="margin-top:10px">
+          <input type="number" id="score-away" class="score-input"
+                 min="0" max="30" placeholder="0"
+                 inputmode="numeric" pattern="[0-9]*"/>
+          <span class="score-input-label">Goles</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Penalty section – only shown for knockout matches -->
+    <div class="pens-section" id="pens-section">
+      <div class="pens-label">⚽ Penales (si hubo empate al 90')</div>
+      <div class="pens-inputs">
+        <div style="text-align:center">
+          <input type="number" id="pens-home" class="score-input"
+                 min="0" max="30" placeholder="–"
+                 inputmode="numeric" pattern="[0-9]*"/>
+          <div class="score-input-label" id="pens-home-label">Local</div>
+        </div>
+        <div class="score-dash" style="font-size:1.4rem">–</div>
+        <div style="text-align:center">
+          <input type="number" id="pens-away" class="score-input"
+                 min="0" max="30" placeholder="–"
+                 inputmode="numeric" pattern="[0-9]*"/>
+          <div class="score-input-label" id="pens-away-label">Visit.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match status -->
+    <select id="match-status" class="status-select">
+      <option value="finished">✅ Finalizado</option>
+      <option value="live">🔴 En vivo</option>
+      <option value="scheduled">📅 Programado (sin resultado)</option>
+    </select>
+
+    <!-- Action buttons -->
+    <div class="modal-actions">
+      <button class="btn btn-danger  btn-sm" onclick="deleteMatchResult()">🗑</button>
+      <button class="btn btn-outline"        onclick="closeEditModal()">Cancelar</button>
+      <button class="btn btn-primary"        onclick="saveMatchResult()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════════════╗
+     ║      QUICK-ADD MODAL (buscar partido)         ║
+     ╚══════════════════════════════════════════════╝ -->
+<div id="quick-modal" class="modal-overlay" onclick="if(event.target===this)closeQuickModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="margin-bottom:6px">INGRESAR RESULTADO</div>
+    <p style="font-family:var(--font-cond);font-size:.82rem;color:var(--text-3);
+       text-align:center;margin-bottom:14px">
+      Busca el partido que deseas actualizar
+    </p>
+    <input
+      type="search"
+      id="quick-search"
+      class="quick-search"
+      placeholder="🔍  Buscar selección, fecha o fase…"
+      autocomplete="off"
+      oninput="filterQuickList(this.value)"/>
+    <div id="quick-list" class="quick-list"></div>
+  </div>
+</div>
+
+<!-- ── Toast container ──────────────────────────── -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<!-- ╔══════════════════════════════════════════════╗
+     ║              SCRIPTS                          ║
+     ║  Orden importa: data → storage → tournament   ║
+     ║                → app                          ║
+     ╚══════════════════════════════════════════════╝ -->
+<script src="./js/data.js"></script>
+<script src="./js/storage.js"></script>
+<script src="./js/tournament.js"></script>
+<script src="./js/app.js"></script>
+
+<script>
+/* ── Keyboard shortcuts ─────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeEditModal();
+    closeQuickModal();
+  }
+  // Ctrl/Cmd + K → quick add
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    openQuickAdd();
+  }
+});
+
+/* ── Score inputs: Enter jumps to next field ────── */
+document.getElementById('score-home').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('score-away').focus();
+});
+document.getElementById('score-away').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveMatchResult();
+});
+</script>
+</body>
+</html>
