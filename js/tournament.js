@@ -114,7 +114,11 @@ const Tournament = {
       const r = results[mid];
       if (!r || r.status !== 'finished') return null;
       const enriched = { ...match, ...r };
-      return this.getMatchWinner(enriched);
+      const winnerId = this.getMatchWinner(enriched);
+      if (!winnerId) return null;
+      // If winnerId is itself a slot (e.g. '1A' or 'W73'), resolve recursively
+      if (WC_TEAMS[winnerId]) return winnerId;
+      return this.resolveSlot(winnerId);
     }
 
     // Pattern: L<id> — loser of match id (for 3rd place match)
@@ -128,7 +132,9 @@ const Tournament = {
       const enriched = { ...match, ...r };
       const winner   = this.getMatchWinner(enriched);
       if (!winner) return null;
-      return winner === enriched.home ? enriched.away : enriched.home;
+      const loser = winner === enriched.home ? enriched.away : enriched.home;
+      if (WC_TEAMS[loser]) return loser;
+      return this.resolveSlot(loser);
     }
 
     return null;
@@ -232,5 +238,93 @@ const Tournament = {
       homeWins, awayWins, draws,
       topScorers,
     };
+  },
+
+  // ── Build and cache knockout resolutions ───────────────────
+  // Produces an object that maps slot labels -> teamId and matchId -> {home, away}
+  updateKnockout() {
+    const results = Storage.getResults();
+    const map = {}; // slotLabel -> teamId or null
+
+    const resolveLabel = (label, seen = new Set()) => {
+      if (!label) return null;
+      if (WC_TEAMS[label]) return label;
+      if (map[label]) return map[label];
+      if (seen.has(label)) return null;
+      seen.add(label);
+
+      // digit+letter pattern (1A,2B,3ABC)
+      const posMatch = label.match(/^([123])([A-L]+)$/);
+      if (posMatch) {
+        const pos = parseInt(posMatch[1]);
+        const groups = posMatch[2].split('');
+        if (pos === 3 && groups.length > 1) {
+          const candidates = [];
+          groups.forEach(g => {
+            const st = this.getGroupStandings(g);
+            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
+          });
+          if (!candidates.length) return null;
+          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+          map[label] = candidates[0].teamId;
+          return map[label];
+        } else {
+          const g = posMatch[2][0];
+          const st = this.getGroupStandings(g);
+          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
+          return null;
+        }
+      }
+
+      // W<number>
+      const w = label.match(/^W(\d+)$/);
+      if (w) {
+        const mid = parseInt(w[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const r = results[mid];
+        if (!r || r.status !== 'finished') return null;
+        const enriched = { ...match, ...r };
+        const winner = this.getMatchWinner(enriched);
+        if (!winner) return null;
+        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
+        const resolved = resolveLabel(winner, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      // L<number>
+      const l = label.match(/^L(\d+)$/);
+      if (l) {
+        const mid = parseInt(l[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const r = results[mid];
+        if (!r || r.status !== 'finished') return null;
+        const enriched = { ...match, ...r };
+        const winner = this.getMatchWinner(enriched);
+        if (!winner) return null;
+        const loser = winner === enriched.home ? enriched.away : enriched.home;
+        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
+        const resolved = resolveLabel(loser, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      return null;
+    };
+
+    // Resolve all knockout slot labels and also build per-match entries
+    WC_MATCHES.filter(m => m.phase && m.phase !== 'group').forEach(m => {
+      const homeResolved = resolveLabel(m.home) || null;
+      const awayResolved = resolveLabel(m.away) || null;
+      // store both forms
+      map[m.home] = homeResolved;
+      map[m.away] = awayResolved;
+      map[m.id] = { home: homeResolved, away: awayResolved };
+    });
+
+    Storage.saveKnockout(map);
+    return map;
   },
 };
