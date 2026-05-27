@@ -41,12 +41,49 @@ const Tournament = {
 
     Object.values(table).forEach(r => r.gd = r.gf - r.ga);
 
-    return Object.values(table).sort((a, b) =>
-      b.pts - a.pts ||
-      b.gd  - a.gd  ||
-      b.gf  - a.gf  ||
-      a.team.name.localeCompare(b.team.name)
-    );
+    const rows = Object.values(table);
+
+    const headToHeadStats = (teamId, tiedIds) => {
+      const stat = { pts: 0, gd: 0, gf: 0 };
+      matches.forEach(m => {
+        if (m.status !== 'finished' || m.homeScore === null || m.homeScore === undefined) return;
+        if (!tiedIds.includes(m.home) || !tiedIds.includes(m.away)) return;
+
+        if (m.home === teamId) {
+          stat.gf += m.homeScore;
+          stat.gd += m.homeScore - m.awayScore;
+          if (m.homeScore > m.awayScore) stat.pts += 3;
+          else if (m.homeScore === m.awayScore) stat.pts += 1;
+        }
+        if (m.away === teamId) {
+          stat.gf += m.awayScore;
+          stat.gd += m.awayScore - m.homeScore;
+          if (m.awayScore > m.homeScore) stat.pts += 3;
+          else if (m.awayScore === m.homeScore) stat.pts += 1;
+        }
+      });
+      return stat;
+    };
+
+    return rows.sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      if (b.gf !== a.gf) return b.gf - a.gf;
+
+      const tiedIds = rows
+        .filter(r => r.pts === a.pts && r.gd === a.gd && r.gf === a.gf)
+        .map(r => r.team.id);
+
+      if (tiedIds.length > 1) {
+        const ah = headToHeadStats(a.team.id, tiedIds);
+        const bh = headToHeadStats(b.team.id, tiedIds);
+        if (bh.pts !== ah.pts) return bh.pts - ah.pts;
+        if (bh.gd !== ah.gd) return bh.gd - ah.gd;
+        if (bh.gf !== ah.gf) return bh.gf - ah.gf;
+      }
+
+      return a.team.name.localeCompare(b.team.name);
+    });
   },
 
   getAllStandings() {
@@ -75,10 +112,6 @@ const Tournament = {
     if (WC_TEAMS[slot]) return slot;
 
     const results  = Storage.getResults();
-    const stored   = Storage.getKnockout();
-
-    // Cached resolution
-    if (stored[slot]) return stored[slot];
 
     // Pattern: digit + letter(s) — e.g. '1A', '2B', '3DEF'
     const posMatch = slot.match(/^([123])([A-L]+)$/);
@@ -180,8 +213,8 @@ const Tournament = {
     const results = Storage.getResults();
     const now     = new Date();
 
-    // Find group-stage matches that haven't been played yet
-    const upcoming = WC_MATCHES_GROUP.filter(m => {
+    // Find all matches that haven't been played yet
+    const upcoming = WC_MATCHES.filter(m => {
       const r = results[m.id];
       if (r && r.status === 'finished') return false;
       const [y,mo,d] = m.date.split('-').map(Number);
