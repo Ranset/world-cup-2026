@@ -287,8 +287,6 @@ function renderCalList() {
    GROUPS VIEW
 ═══════════════════════════════════════════════════════════ */
 function groups(c) {
-  const bestThirdIds = new Set(Tournament.getBestThirds().map(t => t.team.id));
-
   c.innerHTML = `
     <div class="section-header">
       <div class="section-title">GRUPOS</div>
@@ -306,14 +304,13 @@ function groups(c) {
     const standings = Tournament.getGroupStandings(g);
     const gMatches  = Tournament.getGroupMatches(g);
     const played    = gMatches.filter(m => m.status === 'finished').length;
-    wrap.insertAdjacentHTML('beforeend', groupCard(g, standings, gMatches, played, bestThirdIds));
+    wrap.insertAdjacentHTML('beforeend', groupCard(g, standings, gMatches, played));
   });
 }
 
-function groupCard(g, standings, matches, played, bestThirdIds) {
+function groupCard(g, standings, matches, played) {
   const rows = standings.map((row, i) => {
-    const isBestThird = i === 2 && bestThirdIds.has(row.team.id);
-    const cls = i < 2 ? 'qualify-auto' : isBestThird ? 'qualify-possible' : '';
+    const cls = i < 2 ? 'qualify-auto' : i === 2 ? 'qualify-possible' : '';
     const rankCls = ['rank-1','rank-2','rank-3','rank-4'][i] || 'rank-4';
     return `<tr class="${cls}">
       <td><span class="rank ${rankCls}">${i+1}</span></td>
