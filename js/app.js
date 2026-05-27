@@ -55,13 +55,6 @@ function toast(msg, type = '', duration = 2800) {
   setTimeout(() => { el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, duration);
 }
 
-function renderFlag(emoji) {
-  if (!emoji) return '';
-  return Array.from(emoji)
-    .map(ch => `&#x${ch.codePointAt(0).toString(16)};`)
-    .join('');
-}
-
 /* ═══════════════════════════════════════════════════════════
    HOME VIEW
 ═══════════════════════════════════════════════════════════ */
@@ -217,7 +210,7 @@ function renderRecent() {
 function venuesHTML() {
   return Object.entries(WC_VENUES).map(([key, v]) => `
     <div class="venue-chip">
-      <div class="venue-flag">${renderFlag(v.flag)}</div>
+      <div class="venue-flag">${v.flag}</div>
       <div class="venue-info">
         <div class="venue-name">${v.name}</div>
         <div class="venue-city">${v.city} · ${v.capacity.toLocaleString('es-MX')}</div>
@@ -323,7 +316,7 @@ function groupCard(g, standings, matches, played) {
       <td><span class="rank ${rankCls}">${i+1}</span></td>
       <td>
         <div class="team-cell">
-          <span class="flag-lg">${renderFlag(row.team.flag)}</span>
+          <span class="flag-lg">${row.team.flag}</span>
           <div>
             <div class="team-cell-name">${row.team.name}</div>
             <div class="team-cell-conf">${row.team.confederation}</div>
@@ -345,9 +338,9 @@ function groupCard(g, standings, matches, played) {
     const h = WC_TEAMS[m.home], a = WC_TEAMS[m.away];
     const done = m.status === 'finished' && m.homeScore !== null;
     return `<div class="group-match-row" onclick="openEditModal(${m.id})">
-      <span class="group-match-team">${h?renderFlag(h.flag):''} ${h?h.code:m.home}</span>
+      <span class="group-match-team">${h?h.flag:''} ${h?h.code:m.home}</span>
       <span class="group-match-score">${done ? `${m.homeScore} – ${m.awayScore}` : `<span style='color:var(--text-3)'>${m.time}</span>`}</span>
-      <span class="group-match-team right">${a?a.code:m.away} ${a?renderFlag(a.flag):''}</span>
+      <span class="group-match-team right">${a?a.code:m.away} ${a?a.flag:''}</span>
       <span class="group-match-edit">✏️</span>
     </div>`;
   }).join('');
@@ -439,7 +432,7 @@ function bracketMatch(m) {
     const isWinner = winner && winner === (isHome ? m.home : m.away);
     return `<div class="bracket-team-row${isWinner?' btr-winner':''}">
       <div class="btr-info">
-        <span class="btr-flag">${teamObj ? renderFlag(teamObj.flag) : '?'}</span>
+        <span class="btr-flag">${teamObj ? teamObj.flag : '?'}</span>
         <span class="btr-name">${teamObj ? teamObj.code : teamSlot}</span>
       </div>
       <div class="btr-score">
@@ -577,18 +570,18 @@ function predCard(m, preds, results) {
     </div>
     <div class="pred-match">
       <div class="pred-team">
-        <div class="pred-flag">${renderFlag(h?h.flag:'🏳')}</div>
+        <div class="pred-flag">${h?h.flag:'🏳'}</div>
         <div class="pred-team-name">${h?h.name:m.home}</div>
       </div>
       <div class="pred-center">${scoreDisp}</div>
       <div class="pred-team pred-team-away">
-        <div class="pred-flag">${renderFlag(a?a.flag:'🏳')}</div>
+        <div class="pred-flag">${a?a.flag:'🏳'}</div>
         <div class="pred-team-name">${a?a.name:m.away}</div>
       </div>
     </div>
     <div class="pred-btns${disabled}">
       <button class="pred-btn pred-btn-home${selHome}" onclick="savePred(${m.id},'${m.home}')">
-        ${h?renderFlag(h.flag):''} ${h?h.code:'?'}
+        ${h?h.flag:''} ${h?h.code:'?'}
         <span class="pred-btn-sub">GANA</span>
       </button>
       <button class="pred-btn pred-btn-draw${selDraw}" onclick="savePred(${m.id},'draw')">
@@ -596,7 +589,7 @@ function predCard(m, preds, results) {
         <span class="pred-btn-sub">EMPATE</span>
       </button>
       <button class="pred-btn pred-btn-away${selAway}" onclick="savePred(${m.id},'${m.away}')">
-        ${a?renderFlag(a.flag):''} ${a?a.code:'?'}
+        ${a?a.flag:''} ${a?a.code:'?'}
         <span class="pred-btn-sub">GANA</span>
       </button>
     </div>
@@ -655,7 +648,7 @@ function stats(c) {
         ${s.topScorers.length ? s.topScorers.map((row, i) => `
           <div class="scorer-row">
             <span class="scorer-rank">${i+1}</span>
-            <span class="scorer-flag">${renderFlag(row.team.flag)}</span>
+            <span class="scorer-flag">${row.team.flag}</span>
             <span class="scorer-name">${row.team.name}</span>
             <span class="scorer-bar-wrap">
               <span class="scorer-bar" style="width:${s.topScorers[0].goals>0?Math.round(row.goals/s.topScorers[0].goals*100):0}%"></span>
@@ -690,7 +683,7 @@ function stats(c) {
           return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;
                   border-bottom:1px solid var(--border);font-size:.82rem">
             <span>${d.correct ? '✅' : '❌'}</span>
-            <span style="flex:1;font-family:var(--font-cond)">${h?renderFlag(h.flag):''} ${h?h.code:d.match.home} ${r?r.homeScore:''} – ${r?r.awayScore:''} ${a?a.code:d.match.away} ${a?renderFlag(a.flag):''}</span>
+            <span style="flex:1;font-family:var(--font-cond)">${h?h.flag:''} ${h?h.code:d.match.home} ${r?r.homeScore:''} – ${r?r.awayScore:''} ${a?a.code:d.match.away} ${a?a.flag:''}</span>
             <span style="color:var(--text-3)">→ ${d.predicted==='draw'?'Empate':(WC_TEAMS[d.predicted]?.code||d.predicted)}</span>
           </div>`;
         }).join('')}
@@ -762,7 +755,7 @@ function matchCard(m, opts = {}) {
     </div>
     <div class="mc-teams">
       <div class="mc-team">
-        <span class="mc-flag">${renderFlag(h?h.flag:'🏳')}</span>
+        <span class="mc-flag">${h?h.flag:'🏳'}</span>
         <div class="mc-team-names">
           <div class="mc-code">${h?h.code:m.home}</div>
           <div class="mc-name">${h?h.name:''}</div>
@@ -770,7 +763,7 @@ function matchCard(m, opts = {}) {
       </div>
       <div class="mc-score">${scorePart}</div>
       <div class="mc-team mc-team-away">
-        <span class="mc-flag">${renderFlag(a?a.flag:'🏳')}</span>
+        <span class="mc-flag">${a?a.flag:'🏳'}</span>
         <div class="mc-team-names">
           <div class="mc-code">${a?a.code:m.away}</div>
           <div class="mc-name">${a?a.name:''}</div>
@@ -792,11 +785,11 @@ window.openEditModal = function(matchId) {
   const stored = Storage.getResults()[matchId] || {};
   const h = WC_TEAMS[match.home], a = WC_TEAMS[match.away];
 
-  document.getElementById('modal-title').innerHTML =
-    `${h?renderFlag(h.flag):''} ${h?h.name:match.home}  vs  ${a?renderFlag(a.flag):''} ${a?a.name:match.away}`;
-  document.getElementById('modal-home-flag').innerHTML  = renderFlag(h?h.flag:'🏳');
+  document.getElementById('modal-title').textContent =
+    `${h?h.flag:''} ${h?h.name:match.home}  vs  ${a?a.flag:''} ${a?a.name:match.away}`;
+  document.getElementById('modal-home-flag').textContent  = h?h.flag:'🏳';
   document.getElementById('modal-home-name').textContent  = h?h.name:match.home;
-  document.getElementById('modal-away-flag').innerHTML  = renderFlag(a?a.flag:'🏳');
+  document.getElementById('modal-away-flag').textContent  = a?a.flag:'🏳';
   document.getElementById('modal-away-name').textContent  = a?a.name:match.away;
   document.getElementById('score-home').value  = stored.homeScore ?? '';
   document.getElementById('score-away').value  = stored.awayScore ?? '';
@@ -900,9 +893,9 @@ function renderQuickList(q) {
     const done = r && r.homeScore !== null;
     return `<div class="quick-item" onclick="closeQuickModal();openEditModal(${m.id})">
       <div class="quick-item-teams">
-        <span>${h?renderFlag(h.flag):''} ${h?h.code:m.home}</span>
+        <span>${h?h.flag:''} ${h?h.code:m.home}</span>
         <span style="color:var(--text-3);font-size:.8rem">vs</span>
-        <span>${a?a.code:m.away} ${a?renderFlag(a.flag):''}</span>
+        <span>${a?a.code:m.away} ${a?a.flag:''}</span>
       </div>
       <div class="quick-item-meta">${PHASE_LABELS[m.phase]||m.phase}${m.group?' · G'+m.group:''} · ${m.date}</div>
       <div class="quick-item-score">${done?`${r.homeScore}–${r.awayScore}`:m.time}</div>
@@ -940,7 +933,7 @@ function countdownTick() {
 
   if (diff <= 0) {
     el.innerHTML = `<div class="countdown-label">Próximo partido</div>
-      <div class="countdown-match">${ht?renderFlag(ht.flag):''} ${ht?ht.name:next.home} <span style="opacity:.5">vs</span> ${at?renderFlag(at.flag):''} ${at?at.name:next.away}</div>
+      <div class="countdown-match">${ht?ht.flag:''} ${ht?ht.name:next.home} <span style="opacity:.5">vs</span> ${at?at.flag:''} ${at?at.name:next.away}</div>
       <div class="live-badge" style="display:inline-block;font-size:.9rem;margin-top:8px;padding:5px 18px">EN VIVO AHORA</div>`;
     return;
   }
@@ -953,9 +946,9 @@ function countdownTick() {
   el.innerHTML = `
     <div class="countdown-label">⏱ Próximo partido</div>
     <div class="countdown-match">
-      ${ht?renderFlag(ht.flag):renderFlag('🏳')} ${ht?ht.name:next.home}
+      ${ht?ht.flag:'🏳'} ${ht?ht.name:next.home}
       <span style="opacity:.4;margin:0 6px">vs</span>
-      ${at?renderFlag(at.flag):renderFlag('🏳')} ${at?at.name:next.away}
+      ${at?at.flag:'🏳'} ${at?at.name:next.away}
     </div>
     <div class="countdown-venue">📍 ${vn?vn.name+', '+vn.city:''} &nbsp;·&nbsp; ${fmtDate(next.date)} ${next.time} hrs (hora MX)</div>
     <div class="countdown-timer">

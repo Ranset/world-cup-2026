@@ -45,7 +45,6 @@ html { font-size:16px; scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
 body {
   font-family:var(--font-body); background:var(--bg); color:var(--text-1);
   min-height:100dvh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
-  font-variant-emoji:emoji;
 }
 button { cursor:pointer; border:none; background:none; font-family:inherit; }
 input,select { font-family:inherit; }
@@ -302,7 +301,7 @@ img { max-width:100%; display:block; }
   display:flex; align-items:center; gap:8px;
   border:1px solid var(--border); box-shadow:var(--shadow-sm);
 }
-.venue-flag  { font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol',sans-serif; font-size:1.2rem; flex-shrink:0; }
+.venue-flag  { font-size:1.2rem; flex-shrink:0; }
 .venue-info  { min-width:0; }
 .venue-name  { font-family:var(--font-cond); font-size:.78rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .venue-city  { font-size:.65rem; color:var(--text-3); }
@@ -375,7 +374,7 @@ img { max-width:100%; display:block; }
 }
 .mc-team { display:flex; align-items:center; gap:7px; }
 .mc-team-away { flex-direction:row-reverse; text-align:right; }
-.mc-flag { font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol',sans-serif; font-size:1.6rem; line-height:1; flex-shrink:0; }
+.mc-flag { font-size:1.6rem; line-height:1; flex-shrink:0; }
 .mc-team-names { min-width:0; }
 .mc-code { font-family:var(--font-cond); font-size:.95rem; font-weight:700; letter-spacing:.5px; }
 .mc-name { font-size:.7rem; color:var(--text-2); }
@@ -471,7 +470,7 @@ img { max-width:100%; display:block; }
 .pts-cell { font-family:var(--font-cond); font-weight:700; font-size:.95rem; color:var(--blue); }
 
 .team-cell { display:flex; align-items:center; gap:6px; min-width:0; text-align:left; }
-.flag-lg   { font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol',sans-serif; font-size:1.2rem; flex-shrink:0; }
+.flag-lg   { font-size:1.2rem; flex-shrink:0; }
 .team-cell-name { font-family:var(--font-cond); font-size:.82rem; font-weight:700; white-space:nowrap; }
 .team-cell-conf { font-size:.62rem; color:var(--text-3); }
 
@@ -490,7 +489,7 @@ img { max-width:100%; display:block; }
 }
 .group-match-row:first-of-type { border-top:none; }
 .group-match-row:hover { background:var(--bg); border-radius:6px; }
-.group-match-team  { font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol',sans-serif; font-weight:700; }
+.group-match-team  { font-weight:700; }
 .group-match-team.right { text-align:right; }
 .group-match-score { text-align:center; font-family:var(--font-head); font-size:1.1rem; color:var(--blue); min-width:50px; }
 .group-match-edit  { color:var(--text-3); font-size:.8rem; }
@@ -525,7 +524,7 @@ img { max-width:100%; display:block; }
 .bracket-team-row:last-of-type { border-bottom:none; }
 .btr-winner { background:var(--blue-pale); font-weight:700; }
 .btr-info   { display:flex; align-items:center; gap:5px; }
-.btr-flag   { font-family:'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol',sans-serif; font-size:1rem; }
+.btr-flag   { font-size:1rem; }
 .btr-name   { font-family:var(--font-cond); font-size:.82rem; font-weight:700; }
 .btr-score  { font-family:var(--font-head); font-size:1.15rem; color:var(--blue); display:flex; align-items:center; gap:2px; }
 .btr-pens   { font-size:.62rem; color:var(--text-3); }
