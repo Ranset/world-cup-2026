@@ -533,11 +533,9 @@ function renderPredList(preds, results) {
 }
 
 function predCard(m, preds, results) {
-  // Resolve knockout slots for this match
-  const koMap = Storage.getKnockout();
-  const cached = koMap && koMap[m.id] ? koMap[m.id] : null;
-  const hId = (cached && cached.home) ? cached.home : Tournament.resolveSlot(m.home);
-  const aId = (cached && cached.away) ? cached.away : Tournament.resolveSlot(m.away);
+  // Resolve knockout slots based on predictions (for predictions view)
+  const hId = Tournament.resolveSlotByPredictions(m.home, preds);
+  const aId = Tournament.resolveSlotByPredictions(m.away, preds);
   const h = WC_TEAMS[hId] || WC_TEAMS[m.home];
   const a = WC_TEAMS[aId] || WC_TEAMS[m.away];
   const pred    = preds[m.id];
@@ -545,10 +543,10 @@ function predCard(m, preds, results) {
   const done    = r && r.status === 'finished' && r.homeScore !== null;
   const winnerRaw  = done ? Tournament.getMatchWinner({ ...m, ...r }) : null;
   const actual  = winnerRaw ? Tournament.resolveSlot(winnerRaw) : (done ? 'draw' : null);
-  // Normalize predicted winner to resolved team id when possible
+  // Normalize predicted winner to resolved team id (using prediction-based resolution)
   let predResolved = null;
   if (pred && pred.winner) {
-    predResolved = pred.winner === 'draw' ? 'draw' : (Tournament.resolveSlot(pred.winner) || pred.winner);
+    predResolved = pred.winner === 'draw' ? 'draw' : (Tournament.resolveSlotByPredictions(pred.winner, preds) || pred.winner);
   }
   const correct = pred && actual && predResolved && predResolved === actual || (pred && pred.winner === 'draw' && actual === 'draw');
 

@@ -327,4 +327,82 @@ const Tournament = {
     Storage.saveKnockout(map);
     return map;
   },
+
+  // ── Resolve slot based on predictions (for predictions view) ─────────
+  // Similar to resolveSlot but uses predicted winners/losers instead of actual results
+  resolveSlotByPredictions(slot, predictions = {}) {
+    if (!slot) return null;
+    if (WC_TEAMS[slot]) return slot;
+
+    const map = {}; // cache within this call
+
+    const resolveLabel = (label, seen = new Set()) => {
+      if (!label) return null;
+      if (WC_TEAMS[label]) return label;
+      if (map[label]) return map[label];
+      if (seen.has(label)) return null;
+      seen.add(label);
+
+      // digit+letter pattern (1A,2B,3ABC) — use real group standings
+      const posMatch = label.match(/^([123])([A-L]+)$/);
+      if (posMatch) {
+        const pos = parseInt(posMatch[1]);
+        const groups = posMatch[2].split('');
+        if (pos === 3 && groups.length > 1) {
+          const candidates = [];
+          groups.forEach(g => {
+            const st = this.getGroupStandings(g);
+            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
+          });
+          if (!candidates.length) return null;
+          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+          map[label] = candidates[0].teamId;
+          return map[label];
+        } else {
+          const g = posMatch[2][0];
+          const st = this.getGroupStandings(g);
+          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
+          return null;
+        }
+      }
+
+      // W<number> — winner based on prediction
+      const w = label.match(/^W(\d+)$/);
+      if (w) {
+        const mid = parseInt(w[1]);
+        const pred = predictions[mid];
+        if (!pred || !pred.winner) return null;
+        const winner = pred.winner;
+        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
+        // If winner is a slot, resolve it recursively
+        const resolved = resolveLabel(winner, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      // L<number> — loser based on prediction (predict opposite winner)
+      const l = label.match(/^L(\d+)$/);
+      if (l) {
+        const mid = parseInt(l[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const pred = predictions[mid];
+        if (!pred || !pred.winner) return null;
+        // Predict the loser: opposite of predicted winner
+        const predictedWinner = pred.winner;
+        const loser = predictedWinner === 'draw' ? null : 
+                      (predictedWinner === match.home ? match.away : match.home);
+        if (!loser) return null;
+        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
+        // If loser is a slot, resolve it recursively
+        const resolved = resolveLabel(loser, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      return null;
+    };
+
+    return resolveLabel(slot);
+  },
 };
