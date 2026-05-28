@@ -456,15 +456,39 @@ img { max-width:100%; display:block; }
 .group-table td { padding:9px 8px; border-bottom:1px solid var(--border); font-size:.85rem; text-align:center; }
 .group-table tr:last-child td { border-bottom:none; }
 .group-table tbody tr:hover { background:var(--bg); }
-.qualify-auto     { background:rgba(0,166,81,.04); }
-.qualify-possible { background:rgba(212,175,55,.06); }
 
+/* ── FIX: Clasificación grupos — colores visibles ────────
+   1º y 2º: fondo verde claro + borde izquierdo verde
+   3º (posible mejor tercero): fondo dorado claro + borde izq.
+   Los 8 mejores 3eros de 12 grupos clasifican al Mundial 2026
+─────────────────────────────────────────────────────────── */
+tr.qualify-auto {
+  background: rgba(0, 166, 81, .10);
+}
+tr.qualify-auto td:first-child {
+  border-left: 3px solid var(--green);
+}
+tr.qualify-possible {
+  background: rgba(212, 175, 55, .14);
+}
+tr.qualify-possible td:first-child {
+  border-left: 3px solid var(--gold);
+}
+.group-table tbody tr:hover td { background: transparent; }
+.group-table tbody tr.qualify-auto:hover    { background: rgba(0, 166, 81, .18); }
+.group-table tbody tr.qualify-possible:hover{ background: rgba(212, 175, 55, .22); }
+
+/* ── Rank badges ─────────────────────────────────────────
+   rank-1 y rank-2 en verde: ambos clasifican automáticamente
+   rank-3 en dorado: posible clasificación (mejor 3ro)
+   rank-4 en gris: eliminado
+─────────────────────────────────────────────────────────── */
 .rank {
   width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
   font-family:var(--font-cond); font-size:.78rem; font-weight:900;
 }
 .rank-1 { background:var(--green);   color:#fff; }
-.rank-2 { background:var(--blue);    color:#fff; }
+.rank-2 { background:var(--green);   color:#fff; }
 .rank-3 { background:var(--gold);    color:var(--blue); }
 .rank-4 { background:var(--border);  color:var(--text-2); }
 .pts-cell { font-family:var(--font-cond); font-weight:700; font-size:.95rem; color:var(--blue); }
@@ -735,27 +759,17 @@ img { max-width:100%; display:block; }
 ::-webkit-scrollbar-thumb:hover { background:var(--text-3); }
 
 /* ─────────────────────────────────────────────────────────
-   MISSING / SUPPLEMENTAL STYLES
+   SUPPLEMENTAL STYLES
 ───────────────────────────────────────────────────────── */
-
-/* Away team right-aligned in match card */
-.mc-team-away {
-  flex-direction: row-reverse;
-  text-align: right;
-}
+.mc-team-away { flex-direction: row-reverse; text-align: right; }
 .mc-team-away .mc-team-names { text-align: right; }
-
-/* Match card compact (home screen recent results) */
 .match-card.compact { padding: 10px 12px 8px; }
-
-/* Group badge small (in group card header) */
 .group-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%;
   font-family: var(--font-cond); font-size: .75rem; font-weight: 900;
 }
 
-/* Bracket phase — responsive grid override for small screens */
 @media (max-width: 480px) {
   .bracket-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .pred-score-card { flex-direction: column; align-items: flex-start; }
@@ -768,18 +782,14 @@ img { max-width:100%; display:block; }
   .cu-num { font-size: 1.5rem; }
 }
 
-/* Score number increments on mobile – increase tap target */
 .score-input[type="number"]::-webkit-inner-spin-button,
 .score-input[type="number"]::-webkit-outer-spin-button {
-  opacity: 1;
-  height: 52px;
+  opacity: 1; height: 52px;
 }
 
-/* Scrollable bracket on narrow screens */
 .bracket-section { overflow-x: auto; }
 .bracket-grid { min-width: 0; }
 
-/* Quick-list empty */
 .quick-list:empty::after {
   display: block; text-align: center; padding: 24px;
   font-family: var(--font-cond); color: var(--text-3);
@@ -787,36 +797,28 @@ img { max-width:100%; display:block; }
   content: 'Escribe para buscar…';
 }
 
-/* Venue chip on narrow screens */
 @media (max-width: 360px) {
   .venues-grid { grid-template-columns: 1fr; }
   .quick-links { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Active state visual on nav items – gold underline pulse */
 @keyframes navActivePulse {
   0%   { opacity: 0; width: 0; }
   100% { opacity: 1; width: 28px; }
 }
 .nav-btn.active::after { animation: navActivePulse .25s ease both; }
 
-/* In-group match row hover fix */
 .group-match-row:first-child { border-top: none; }
-
-/* PDF export button loading state */
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 
-/* Bracket phase title for final / 3rd */
 .bracket-section .bracket-phase-title {
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
-/* Fix bracket match card grid on 2-col layout */
 @media (min-width: 480px) {
   .bracket-grid[style*="repeat(1"] .bracket-match-card { max-width: 260px; margin: 0 auto; }
 }
 
-/* Ensure modal doesn't overflow on very small heights (landscape) */
 @media (max-height: 500px) {
   .modal-sheet { padding: 12px 16px 16px; }
   .score-team-flag { font-size: 1.8rem; }
@@ -824,8 +826,5 @@ img { max-width:100%; display:block; }
   .modal-handle { margin-bottom: 10px; }
 }
 
-/* Splash z-index above everything */
 #splash { z-index: 9999; }
-
-/* Smooth transition when switching views */
 #view-container > * { animation: fadeIn .28s ease both; }

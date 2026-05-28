@@ -68,26 +68,28 @@ const Tournament = {
   },
 
   // ── Resolve slot label → team ID ─────────────────────────
-  // Slot examples: '1A', '2B', '3DEF', 'W101', 'L401'
+  // Slot examples: '1A', '2B', '3DEF', 'W101', 'L101'
+  // FIX: recursively resolves nested slot strings so bracket
+  //      shows real team names once group/KO results are entered.
   resolveSlot(slot) {
     if (!slot) return null;
     // Already a real team?
     if (WC_TEAMS[slot]) return slot;
 
-    const results  = Storage.getResults();
-    const stored   = Storage.getKnockout();
+    const results = Storage.getResults();
+    const stored  = Storage.getKnockout();
 
     // Cached resolution
     if (stored[slot]) return stored[slot];
 
-    // Pattern: digit + letter(s) — e.g. '1A', '2B', '3DEF'
+    // Pattern: digit + letter(s) — e.g. '1A', '2B', '3ABCDF'
     const posMatch = slot.match(/^([123])([A-L]+)$/);
     if (posMatch) {
-      const pos   = parseInt(posMatch[1]);
+      const pos    = parseInt(posMatch[1]);
       const groups = posMatch[2].split('');
 
       if (pos === 3 && groups.length > 1) {
-        // Best third among listed groups — pick highest ranked
+        // Best third among listed groups
         const candidates = [];
         groups.forEach(g => {
           const st = this.getGroupStandings(g);
@@ -97,7 +99,6 @@ const Tournament = {
         candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
         return candidates[0].teamId;
       } else {
-        // Nth place in group G (single letter)
         const g  = groups[0];
         const st = this.getGroupStandings(g);
         if (st.length >= pos) return st[pos - 1].team.id;
@@ -113,15 +114,16 @@ const Tournament = {
       if (!match) return null;
       const r = results[mid];
       if (!r || r.status !== 'finished') return null;
-      const enriched = { ...match, ...r };
-      const winnerId = this.getMatchWinner(enriched);
-      if (!winnerId) return null;
-      // If winnerId is itself a slot (e.g. '1A' or 'W73'), resolve recursively
-      if (WC_TEAMS[winnerId]) return winnerId;
-      return this.resolveSlot(winnerId);
+      const enriched   = { ...match, ...r };
+      const winnerSlot = this.getMatchWinner(enriched);
+      if (!winnerSlot) return null;
+      // KEY FIX: the home/away stored in match may itself be a slot string
+      // (e.g. '2A', 'W73'). Resolve recursively until we get a real team ID.
+      if (WC_TEAMS[winnerSlot]) return winnerSlot;
+      return this.resolveSlot(winnerSlot);
     }
 
-    // Pattern: L<id> — loser of match id (for 3rd place match)
+    // Pattern: L<id> — loser of match id (3rd-place match)
     const loseMatch = slot.match(/^L(\d+)$/);
     if (loseMatch) {
       const mid   = parseInt(loseMatch[1]);
@@ -129,12 +131,13 @@ const Tournament = {
       if (!match) return null;
       const r = results[mid];
       if (!r || r.status !== 'finished') return null;
-      const enriched = { ...match, ...r };
-      const winner   = this.getMatchWinner(enriched);
-      if (!winner) return null;
-      const loser = winner === enriched.home ? enriched.away : enriched.home;
-      if (WC_TEAMS[loser]) return loser;
-      return this.resolveSlot(loser);
+      const enriched   = { ...match, ...r };
+      const winnerSlot = this.getMatchWinner(enriched);
+      if (!winnerSlot) return null;
+      // Loser is whichever side is NOT the winner
+      const loserSlot = winnerSlot === enriched.home ? enriched.away : enriched.home;
+      if (WC_TEAMS[loserSlot]) return loserSlot;
+      return this.resolveSlot(loserSlot);
     }
 
     return null;
@@ -181,21 +184,26 @@ const Tournament = {
     };
   },
 
-  // ── Next upcoming match ───────────────────────────────────
+  // ── Next upcoming match (ALL phases, including knockout) ──
+  // FIX: original only searched WC_MATCHES_GROUP, causing
+  //      "EL TORNEO HA CONCLUIDO" after group stage ended.
   getNextMatch() {
     const results = Storage.getResults();
     const now     = new Date();
 
-    // Find group-stage matches that haven't been played yet
-    const upcoming = WC_MATCHES_GROUP.filter(m => {
+    const getMatchTime = (m) => {
+      const [y, mo, d] = m.date.split('-').map(Number);
+      // TBD times: use noon as placeholder so they sort correctly
+      if (!m.time || m.time === 'TBD') return new Date(y, mo - 1, d, 12, 0);
+      const [h, min] = m.time.split(':').map(Number);
+      return new Date(y, mo - 1, d, h, min);
+    };
+
+    const upcoming = WC_MATCHES.filter(m => {
       const r = results[m.id];
       if (r && r.status === 'finished') return false;
-      const [y,mo,d] = m.date.split('-').map(Number);
-      const [h,min]  = m.time.split(':').map(Number);
-      return new Date(y, mo-1, d, h, min) > now;
-    }).sort((a, b) => {
-      return new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`);
-    });
+      return getMatchTime(m) > now;
+    }).sort((a, b) => getMatchTime(a) - getMatchTime(b));
 
     return upcoming[0] || null;
   },
@@ -238,93 +246,5 @@ const Tournament = {
       homeWins, awayWins, draws,
       topScorers,
     };
-  },
-
-  // ── Build and cache knockout resolutions ───────────────────
-  // Produces an object that maps slot labels -> teamId and matchId -> {home, away}
-  updateKnockout() {
-    const results = Storage.getResults();
-    const map = {}; // slotLabel -> teamId or null
-
-    const resolveLabel = (label, seen = new Set()) => {
-      if (!label) return null;
-      if (WC_TEAMS[label]) return label;
-      if (map[label]) return map[label];
-      if (seen.has(label)) return null;
-      seen.add(label);
-
-      // digit+letter pattern (1A,2B,3ABC)
-      const posMatch = label.match(/^([123])([A-L]+)$/);
-      if (posMatch) {
-        const pos = parseInt(posMatch[1]);
-        const groups = posMatch[2].split('');
-        if (pos === 3 && groups.length > 1) {
-          const candidates = [];
-          groups.forEach(g => {
-            const st = this.getGroupStandings(g);
-            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
-          });
-          if (!candidates.length) return null;
-          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-          map[label] = candidates[0].teamId;
-          return map[label];
-        } else {
-          const g = posMatch[2][0];
-          const st = this.getGroupStandings(g);
-          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
-          return null;
-        }
-      }
-
-      // W<number>
-      const w = label.match(/^W(\d+)$/);
-      if (w) {
-        const mid = parseInt(w[1]);
-        const match = WC_MATCHES.find(m => m.id === mid);
-        if (!match) return null;
-        const r = results[mid];
-        if (!r || r.status !== 'finished') return null;
-        const enriched = { ...match, ...r };
-        const winner = this.getMatchWinner(enriched);
-        if (!winner) return null;
-        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
-        const resolved = resolveLabel(winner, seen);
-        map[label] = resolved;
-        return resolved;
-      }
-
-      // L<number>
-      const l = label.match(/^L(\d+)$/);
-      if (l) {
-        const mid = parseInt(l[1]);
-        const match = WC_MATCHES.find(m => m.id === mid);
-        if (!match) return null;
-        const r = results[mid];
-        if (!r || r.status !== 'finished') return null;
-        const enriched = { ...match, ...r };
-        const winner = this.getMatchWinner(enriched);
-        if (!winner) return null;
-        const loser = winner === enriched.home ? enriched.away : enriched.home;
-        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
-        const resolved = resolveLabel(loser, seen);
-        map[label] = resolved;
-        return resolved;
-      }
-
-      return null;
-    };
-
-    // Resolve all knockout slot labels and also build per-match entries
-    WC_MATCHES.filter(m => m.phase && m.phase !== 'group').forEach(m => {
-      const homeResolved = resolveLabel(m.home) || null;
-      const awayResolved = resolveLabel(m.away) || null;
-      // store both forms
-      map[m.home] = homeResolved;
-      map[m.away] = awayResolved;
-      map[m.id] = { home: homeResolved, away: awayResolved };
-    });
-
-    Storage.saveKnockout(map);
-    return map;
   },
 };
