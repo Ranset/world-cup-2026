@@ -311,8 +311,19 @@ function groups(c) {
 }
 
 function groupCard(g, standings, matches, played) {
+  // Get the 8 best third-placed teams to determine qualifier status
+  const bestThirds = Tournament.getBestThirds();
+  const bestThirdIds = new Set(bestThirds.map(t => t.team.id));
+
   const rows = standings.map((row, i) => {
-    const cls = i < 2 ? 'qualify-auto' : i === 2 ? 'qualify-possible' : '';
+    // 1st & 2nd always qualify; 3rd qualifies if in top 8 thirds; 4th does not qualify
+    let cls = '';
+    if (i < 2) {
+      cls = 'qualify-auto';  // Green: 1st and 2nd place
+    } else if (i === 2 && bestThirdIds.has(row.team.id)) {
+      cls = 'qualify-possible';  // Gold: 3rd place and in top 8 thirds
+    }
+    
     const rankCls = ['rank-1','rank-2','rank-3','rank-4'][i] || 'rank-4';
     return `<tr class="${cls}">
       <td><span class="rank ${rankCls}">${i+1}</span></td>
@@ -793,14 +804,17 @@ window.openEditModal = function(matchId) {
   editingMatchId = matchId;
   const match  = WC_MATCHES.find(m => m.id === matchId);
   const stored = Storage.getResults()[matchId] || {};
-  const h = WC_TEAMS[match.home], a = WC_TEAMS[match.away];
+  const homeId = Tournament.resolveSlot(match.home) || match.home;
+  const awayId = Tournament.resolveSlot(match.away) || match.away;
+  const h = WC_TEAMS[homeId];
+  const a = WC_TEAMS[awayId];
 
   document.getElementById('modal-title').textContent =
-    `${h?h.flag:''} ${h?h.name:match.home}  vs  ${a?a.flag:''} ${a?a.name:match.away}`;
+    `${h?h.flag:''} ${h?h.name:homeId}  vs  ${a?a.flag:''} ${a?a.name:awayId}`;
   document.getElementById('modal-home-flag').textContent  = h?h.flag:'🏳';
-  document.getElementById('modal-home-name').textContent  = h?h.name:match.home;
+  document.getElementById('modal-home-name').textContent  = h?h.name:homeId;
   document.getElementById('modal-away-flag').textContent  = a?a.flag:'🏳';
-  document.getElementById('modal-away-name').textContent  = a?a.name:match.away;
+  document.getElementById('modal-away-name').textContent  = a?a.name:awayId;
   document.getElementById('score-home').value  = stored.homeScore ?? '';
   document.getElementById('score-away').value  = stored.awayScore ?? '';
   document.getElementById('pens-home').value   = stored.homePens  ?? '';

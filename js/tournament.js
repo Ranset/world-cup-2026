@@ -67,6 +67,67 @@ const Tournament = {
       .slice(0, 8);
   },
 
+  // ── Predicted group standings from match predictions ──────
+  getPredictedGroupStandings(group, predictions = {}) {
+    const matches = this.getGroupMatches(group);
+    const teams   = Object.values(WC_TEAMS).filter(t => t.group === group);
+    const table   = {};
+    let hasPredictions = false;
+
+    teams.forEach(t => {
+      table[t.id] = { team:t, p:0, w:0, d:0, l:0, gf:0, ga:0, gd:0, pts:0 };
+    });
+
+    matches.forEach(m => {
+      const pred = predictions[m.id];
+      if (!pred || !pred.winner) return;
+      const h = table[m.home], a = table[m.away];
+      if (!h || !a) return;
+
+      const homeWin = pred.winner === m.home;
+      const awayWin = pred.winner === m.away;
+      const draw    = pred.winner === 'draw';
+      if (!homeWin && !awayWin && !draw) return;
+
+      hasPredictions = true;
+      h.p++; a.p++;
+      let homeGoals = 0, awayGoals = 0;
+      if (draw) {
+        h.d++; a.d++; h.pts++; a.pts++;
+      } else if (homeWin) {
+        h.w++; h.pts += 3; a.l++; homeGoals = 1;
+      } else {
+        a.w++; a.pts += 3; h.l++; awayGoals = 1;
+      }
+
+      h.gf += homeGoals; h.ga += awayGoals;
+      a.gf += awayGoals; a.ga += homeGoals;
+    });
+
+    if (!hasPredictions) return [];
+
+    Object.values(table).forEach(r => r.gd = r.gf - r.ga);
+
+    return Object.values(table).sort((a, b) =>
+      b.pts - a.pts ||
+      b.gd  - a.gd  ||
+      b.gf  - a.gf  ||
+      a.team.name.localeCompare(b.team.name)
+    );
+  },
+
+  // ── Predicted best third-placed teams ─────────────────────
+  getPredictedBestThirds(predictions = {}) {
+    const thirds = [];
+    WC_GROUPS.forEach(g => {
+      const st = this.getPredictedGroupStandings(g, predictions);
+      if (st.length >= 3) thirds.push({ ...st[2], group: g });
+    });
+    return thirds
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+      .slice(0, 8);
+  },
+
   // ── Resolve slot label → team ID ─────────────────────────
   // Slot examples: '1A', '2B', '3DEF', 'W101', 'L401'
   resolveSlot(slot) {
@@ -343,7 +404,7 @@ const Tournament = {
       if (seen.has(label)) return null;
       seen.add(label);
 
-      // digit+letter pattern (1A,2B,3ABC) — use real group standings
+      // digit+letter pattern (1A,2B,3ABC) — use predicted group standings when available
       const posMatch = label.match(/^([123])([A-L]+)$/);
       if (posMatch) {
         const pos = parseInt(posMatch[1]);
@@ -351,7 +412,8 @@ const Tournament = {
         if (pos === 3 && groups.length > 1) {
           const candidates = [];
           groups.forEach(g => {
-            const st = this.getGroupStandings(g);
+            let st = this.getPredictedGroupStandings(g, predictions);
+            if (!st.length) st = this.getGroupStandings(g);
             if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
           });
           if (!candidates.length) return null;
@@ -360,7 +422,8 @@ const Tournament = {
           return map[label];
         } else {
           const g = posMatch[2][0];
-          const st = this.getGroupStandings(g);
+          let st = this.getPredictedGroupStandings(g, predictions);
+          if (!st.length) st = this.getGroupStandings(g);
           if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
           return null;
         }
