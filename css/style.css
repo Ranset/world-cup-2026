@@ -212,17 +212,23 @@ img { max-width:100%; display:block; }
 
 /* ── Filter bar ─────────────────────────────────────────── */
 .filter-bar {
-  display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px;
+  display:flex; flex-wrap:wrap; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px;
   scrollbar-width:none;
 }
 .filter-bar::-webkit-scrollbar { display:none; }
 .filter-chip {
+  flex:0 1 auto; min-width:0;
   padding:6px 14px; border-radius:99px; white-space:nowrap;
   font-family:var(--font-cond); font-size:.78rem; font-weight:700;
   border:1.5px solid var(--border); color:var(--text-2);
   background:var(--surface); transition:var(--tr);
 }
 .filter-chip.active, .filter-chip:hover { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+@media (max-width: 600px) {
+  .filter-bar { gap:5px; }
+  .filter-chip { padding:5px 12px; font-size:.72rem; }
+}
 
 /* ─────────────────────────────────────────────────────────
    HOME VIEW
