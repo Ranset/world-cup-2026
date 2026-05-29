@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(hideSplash, 2600);
   setupNavigation();
   setupPWAInstall();
+  // initialize knockout resolutions from any stored results
+  try { Tournament.updateKnockout(); } catch (e) { /* ignore */ }
   navigateTo('home');
 });
 
@@ -180,7 +182,7 @@ function home(c) {
     <div style="text-align:center;padding:20px 0;font-family:var(--font-cond);
          font-size:.72rem;color:var(--text-3);letter-spacing:1px" class="fade-in">
       FIFA WORLD CUP 2026™ &nbsp;·&nbsp; 48 SELECCIONES &nbsp;·&nbsp; 104 PARTIDOS<br>
-      Aplicación personal — Datos en localStorage
+      Aplicación personal — Datos en locales
     </div>`;
 
   renderRecent();
@@ -309,8 +311,19 @@ function groups(c) {
 }
 
 function groupCard(g, standings, matches, played) {
+  // Get the 8 best third-placed teams to determine qualifier status
+  const bestThirds = Tournament.getBestThirds();
+  const bestThirdIds = new Set(bestThirds.map(t => t.team.id));
+
   const rows = standings.map((row, i) => {
-    const cls = i < 2 ? 'qualify-auto' : i === 2 ? 'qualify-possible' : '';
+    // 1st & 2nd always qualify; 3rd qualifies if in top 8 thirds; 4th does not qualify
+    let cls = '';
+    if (i < 2) {
+      cls = 'qualify-auto';  // Green: 1st and 2nd place
+    } else if (i === 2 && bestThirdIds.has(row.team.id)) {
+      cls = 'qualify-possible';  // Gold: 3rd place and in top 8 thirds
+    }
+    
     const rankCls = ['rank-1','rank-2','rank-3','rank-4'][i] || 'rank-4';
     return `<tr class="${cls}">
       <td><span class="rank ${rankCls}">${i+1}</span></td>
@@ -531,29 +544,37 @@ function renderPredList(preds, results) {
 }
 
 function predCard(m, preds, results) {
-  const h       = WC_TEAMS[m.home];
-  const a       = WC_TEAMS[m.away];
+  // Resolve knockout slots based on predictions (for predictions view)
+  const hId = Tournament.resolveSlotByPredictions(m.home, preds);
+  const aId = Tournament.resolveSlotByPredictions(m.away, preds);
+  const h = WC_TEAMS[hId] || WC_TEAMS[m.home];
+  const a = WC_TEAMS[aId] || WC_TEAMS[m.away];
   const pred    = preds[m.id];
   const r       = results[m.id];
   const done    = r && r.status === 'finished' && r.homeScore !== null;
-  const winner  = done ? Tournament.getMatchWinner({ ...m, ...r }) : null;
-  const actual  = winner || (done ? 'draw' : null);
-  const correct = pred && actual && pred.winner === actual;
+  const winnerRaw  = done ? Tournament.getMatchWinner({ ...m, ...r }) : null;
+  const actual  = winnerRaw ? Tournament.resolveSlot(winnerRaw) : (done ? 'draw' : null);
+  // Normalize predicted winner to resolved team id (using prediction-based resolution)
+  let predResolved = null;
+  if (pred && pred.winner) {
+    predResolved = pred.winner === 'draw' ? 'draw' : (Tournament.resolveSlotByPredictions(pred.winner, preds) || pred.winner);
+  }
+  const correct = pred && actual && predResolved && predResolved === actual || (pred && pred.winner === 'draw' && actual === 'draw');
 
   const scoreDisp = done
     ? `<div class="pred-vs-score">${r.homeScore} – ${r.awayScore}</div>`
     : `<div class="pred-vs-time">${m.time}<br><span style="font-size:.65rem">${fmtDateShort(m.date)}</span></div>`;
 
-  const selHome  = pred?.winner === m.home  ? ' pred-sel-home'  : '';
+  const selHome  = predResolved === (hId || m.home)  ? ' pred-sel-home'  : '';
   const selDraw  = pred?.winner === 'draw'  ? ' pred-sel-draw'  : '';
-  const selAway  = pred?.winner === m.away  ? ' pred-sel-away'  : '';
+  const selAway  = predResolved === (aId || m.away)  ? ' pred-sel-away'  : '';
   const disabled = done ? ' pred-disabled' : '';
 
   let resultStrip = '';
   if (pred && done) {
     resultStrip = `<div class="pred-result-strip ${correct?'prs-ok':'prs-bad'}">
       <span>${correct ? '✅ Correcto' : '❌ Incorrecto'}</span>
-      <span>Pronosticaste: <strong>${pred.winner==='draw'?'Empate':(WC_TEAMS[pred.winner]?.name||pred.winner)}</strong>
+      <span>Pronosticaste: <strong>${pred.winner==='draw'?'Empate':(WC_TEAMS[predResolved]?.name||pred.winner)}</strong>
       &nbsp;·&nbsp; Resultado real: <strong>${actual==='draw'?'Empate':(WC_TEAMS[actual]?.name||actual)}</strong></span>
     </div>`;
   } else if (pred && !done) {
@@ -571,25 +592,25 @@ function predCard(m, preds, results) {
     <div class="pred-match">
       <div class="pred-team">
         <div class="pred-flag">${h?h.flag:'🏳'}</div>
-        <div class="pred-team-name">${h?h.name:m.home}</div>
+        <div class="pred-team-name">${h?h.name:(m.home||'')}</div>
       </div>
       <div class="pred-center">${scoreDisp}</div>
       <div class="pred-team pred-team-away">
         <div class="pred-flag">${a?a.flag:'🏳'}</div>
-        <div class="pred-team-name">${a?a.name:m.away}</div>
+        <div class="pred-team-name">${a?a.name:(m.away||'')}</div>
       </div>
     </div>
     <div class="pred-btns${disabled}">
-      <button class="pred-btn pred-btn-home${selHome}" onclick="savePred(${m.id},'${m.home}')">
-        ${h?h.flag:''} ${h?h.code:'?'}
+      <button class="pred-btn pred-btn-home${selHome}" onclick="savePred(${m.id},'${hId || m.home}')">
+        ${h ? h.flag : ''} ${h ? (h.code || hId || m.home) : (hId || m.home || '?')}
         <span class="pred-btn-sub">GANA</span>
       </button>
       <button class="pred-btn pred-btn-draw${selDraw}" onclick="savePred(${m.id},'draw')">
         🤝
         <span class="pred-btn-sub">EMPATE</span>
       </button>
-      <button class="pred-btn pred-btn-away${selAway}" onclick="savePred(${m.id},'${m.away}')">
-        ${a?a.flag:''} ${a?a.code:'?'}
+      <button class="pred-btn pred-btn-away${selAway}" onclick="savePred(${m.id},'${aId || m.away}')">
+        ${a ? a.flag : ''} ${a ? (a.code || aId || m.away) : (aId || m.away || '?')}
         <span class="pred-btn-sub">GANA</span>
       </button>
     </div>
@@ -613,7 +634,7 @@ window.clearPredictions = function() {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   STATS VIEW
+STATS VIEW
 ═══════════════════════════════════════════════════════════ */
 function stats(c) {
   const s      = Tournament.getStats();
@@ -783,14 +804,17 @@ window.openEditModal = function(matchId) {
   editingMatchId = matchId;
   const match  = WC_MATCHES.find(m => m.id === matchId);
   const stored = Storage.getResults()[matchId] || {};
-  const h = WC_TEAMS[match.home], a = WC_TEAMS[match.away];
+  const homeId = Tournament.resolveSlot(match.home) || match.home;
+  const awayId = Tournament.resolveSlot(match.away) || match.away;
+  const h = WC_TEAMS[homeId];
+  const a = WC_TEAMS[awayId];
 
   document.getElementById('modal-title').textContent =
-    `${h?h.flag:''} ${h?h.name:match.home}  vs  ${a?a.flag:''} ${a?a.name:match.away}`;
+    `${h?h.flag:''} ${h?h.name:homeId}  vs  ${a?a.flag:''} ${a?a.name:awayId}`;
   document.getElementById('modal-home-flag').textContent  = h?h.flag:'🏳';
-  document.getElementById('modal-home-name').textContent  = h?h.name:match.home;
+  document.getElementById('modal-home-name').textContent  = h?h.name:homeId;
   document.getElementById('modal-away-flag').textContent  = a?a.flag:'🏳';
-  document.getElementById('modal-away-name').textContent  = a?a.name:match.away;
+  document.getElementById('modal-away-name').textContent  = a?a.name:awayId;
   document.getElementById('score-home').value  = stored.homeScore ?? '';
   document.getElementById('score-away').value  = stored.awayScore ?? '';
   document.getElementById('pens-home').value   = stored.homePens  ?? '';
@@ -830,6 +854,7 @@ window.saveMatchResult = function() {
   const status   = document.getElementById('match-status').value;
 
   Storage.saveResult(editingMatchId, homeScore, awayScore, homePens, awayPens, status);
+  try { Tournament.updateKnockout(); } catch (e) {}
   closeEditModal();
   toast('Resultado guardado ⚽', 'success');
   navigateTo(currentView);
@@ -838,6 +863,7 @@ window.saveMatchResult = function() {
 window.deleteMatchResult = function() {
   if (!confirm('¿Eliminar este resultado?')) return;
   Storage.deleteResult(editingMatchId);
+  try { Tournament.updateKnockout(); } catch (e) {}
   closeEditModal();
   toast('Resultado eliminado');
   navigateTo(currentView);
@@ -1077,6 +1103,7 @@ window.importJSON = function(event) {
       const data = JSON.parse(e.target.result);
       if (!confirm('¿Importar datos? Esto sobreescribirá los actuales.')) return;
       Storage.importAll(data);
+      try { Tournament.updateKnockout(); } catch (e) {}
       toast('Datos importados correctamente', 'success');
       navigateTo(currentView);
     } catch {

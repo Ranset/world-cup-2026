@@ -67,6 +67,67 @@ const Tournament = {
       .slice(0, 8);
   },
 
+  // ── Predicted group standings from match predictions ──────
+  getPredictedGroupStandings(group, predictions = {}) {
+    const matches = this.getGroupMatches(group);
+    const teams   = Object.values(WC_TEAMS).filter(t => t.group === group);
+    const table   = {};
+    let hasPredictions = false;
+
+    teams.forEach(t => {
+      table[t.id] = { team:t, p:0, w:0, d:0, l:0, gf:0, ga:0, gd:0, pts:0 };
+    });
+
+    matches.forEach(m => {
+      const pred = predictions[m.id];
+      if (!pred || !pred.winner) return;
+      const h = table[m.home], a = table[m.away];
+      if (!h || !a) return;
+
+      const homeWin = pred.winner === m.home;
+      const awayWin = pred.winner === m.away;
+      const draw    = pred.winner === 'draw';
+      if (!homeWin && !awayWin && !draw) return;
+
+      hasPredictions = true;
+      h.p++; a.p++;
+      let homeGoals = 0, awayGoals = 0;
+      if (draw) {
+        h.d++; a.d++; h.pts++; a.pts++;
+      } else if (homeWin) {
+        h.w++; h.pts += 3; a.l++; homeGoals = 1;
+      } else {
+        a.w++; a.pts += 3; h.l++; awayGoals = 1;
+      }
+
+      h.gf += homeGoals; h.ga += awayGoals;
+      a.gf += awayGoals; a.ga += homeGoals;
+    });
+
+    if (!hasPredictions) return [];
+
+    Object.values(table).forEach(r => r.gd = r.gf - r.ga);
+
+    return Object.values(table).sort((a, b) =>
+      b.pts - a.pts ||
+      b.gd  - a.gd  ||
+      b.gf  - a.gf  ||
+      a.team.name.localeCompare(b.team.name)
+    );
+  },
+
+  // ── Predicted best third-placed teams ─────────────────────
+  getPredictedBestThirds(predictions = {}) {
+    const thirds = [];
+    WC_GROUPS.forEach(g => {
+      const st = this.getPredictedGroupStandings(g, predictions);
+      if (st.length >= 3) thirds.push({ ...st[2], group: g });
+    });
+    return thirds
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+      .slice(0, 8);
+  },
+
   // ── Resolve slot label → team ID ─────────────────────────
   // Slot examples: '1A', '2B', '3DEF', 'W101', 'L401'
   resolveSlot(slot) {
@@ -114,7 +175,11 @@ const Tournament = {
       const r = results[mid];
       if (!r || r.status !== 'finished') return null;
       const enriched = { ...match, ...r };
-      return this.getMatchWinner(enriched);
+      const winnerId = this.getMatchWinner(enriched);
+      if (!winnerId) return null;
+      // If winnerId is itself a slot (e.g. '1A' or 'W73'), resolve recursively
+      if (WC_TEAMS[winnerId]) return winnerId;
+      return this.resolveSlot(winnerId);
     }
 
     // Pattern: L<id> — loser of match id (for 3rd place match)
@@ -128,7 +193,9 @@ const Tournament = {
       const enriched = { ...match, ...r };
       const winner   = this.getMatchWinner(enriched);
       if (!winner) return null;
-      return winner === enriched.home ? enriched.away : enriched.home;
+      const loser = winner === enriched.home ? enriched.away : enriched.home;
+      if (WC_TEAMS[loser]) return loser;
+      return this.resolveSlot(loser);
     }
 
     return null;
@@ -232,5 +299,173 @@ const Tournament = {
       homeWins, awayWins, draws,
       topScorers,
     };
+  },
+
+  // ── Build and cache knockout resolutions ───────────────────
+  // Produces an object that maps slot labels -> teamId and matchId -> {home, away}
+  updateKnockout() {
+    const results = Storage.getResults();
+    const map = {}; // slotLabel -> teamId or null
+
+    const resolveLabel = (label, seen = new Set()) => {
+      if (!label) return null;
+      if (WC_TEAMS[label]) return label;
+      if (map[label]) return map[label];
+      if (seen.has(label)) return null;
+      seen.add(label);
+
+      // digit+letter pattern (1A,2B,3ABC)
+      const posMatch = label.match(/^([123])([A-L]+)$/);
+      if (posMatch) {
+        const pos = parseInt(posMatch[1]);
+        const groups = posMatch[2].split('');
+        if (pos === 3 && groups.length > 1) {
+          const candidates = [];
+          groups.forEach(g => {
+            const st = this.getGroupStandings(g);
+            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
+          });
+          if (!candidates.length) return null;
+          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+          map[label] = candidates[0].teamId;
+          return map[label];
+        } else {
+          const g = posMatch[2][0];
+          const st = this.getGroupStandings(g);
+          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
+          return null;
+        }
+      }
+
+      // W<number>
+      const w = label.match(/^W(\d+)$/);
+      if (w) {
+        const mid = parseInt(w[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const r = results[mid];
+        if (!r || r.status !== 'finished') return null;
+        const enriched = { ...match, ...r };
+        const winner = this.getMatchWinner(enriched);
+        if (!winner) return null;
+        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
+        const resolved = resolveLabel(winner, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      // L<number>
+      const l = label.match(/^L(\d+)$/);
+      if (l) {
+        const mid = parseInt(l[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const r = results[mid];
+        if (!r || r.status !== 'finished') return null;
+        const enriched = { ...match, ...r };
+        const winner = this.getMatchWinner(enriched);
+        if (!winner) return null;
+        const loser = winner === enriched.home ? enriched.away : enriched.home;
+        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
+        const resolved = resolveLabel(loser, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      return null;
+    };
+
+    // Resolve all knockout slot labels and also build per-match entries
+    WC_MATCHES.filter(m => m.phase && m.phase !== 'group').forEach(m => {
+      const homeResolved = resolveLabel(m.home) || null;
+      const awayResolved = resolveLabel(m.away) || null;
+      // store both forms
+      map[m.home] = homeResolved;
+      map[m.away] = awayResolved;
+      map[m.id] = { home: homeResolved, away: awayResolved };
+    });
+
+    Storage.saveKnockout(map);
+    return map;
+  },
+
+  // ── Resolve slot based on predictions (for predictions view) ─────────
+  // Similar to resolveSlot but uses predicted winners/losers instead of actual results
+  resolveSlotByPredictions(slot, predictions = {}) {
+    if (!slot) return null;
+    if (WC_TEAMS[slot]) return slot;
+
+    const map = {}; // cache within this call
+
+    const resolveLabel = (label, seen = new Set()) => {
+      if (!label) return null;
+      if (WC_TEAMS[label]) return label;
+      if (map[label]) return map[label];
+      if (seen.has(label)) return null;
+      seen.add(label);
+
+      // digit+letter pattern (1A,2B,3ABC) — use predicted group standings when available
+      const posMatch = label.match(/^([123])([A-L]+)$/);
+      if (posMatch) {
+        const pos = parseInt(posMatch[1]);
+        const groups = posMatch[2].split('');
+        if (pos === 3 && groups.length > 1) {
+          const candidates = [];
+          groups.forEach(g => {
+            let st = this.getPredictedGroupStandings(g, predictions);
+            if (!st.length) st = this.getGroupStandings(g);
+            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
+          });
+          if (!candidates.length) return null;
+          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+          map[label] = candidates[0].teamId;
+          return map[label];
+        } else {
+          const g = posMatch[2][0];
+          let st = this.getPredictedGroupStandings(g, predictions);
+          if (!st.length) st = this.getGroupStandings(g);
+          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
+          return null;
+        }
+      }
+
+      // W<number> — winner based on prediction
+      const w = label.match(/^W(\d+)$/);
+      if (w) {
+        const mid = parseInt(w[1]);
+        const pred = predictions[mid];
+        if (!pred || !pred.winner) return null;
+        const winner = pred.winner;
+        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
+        // If winner is a slot, resolve it recursively
+        const resolved = resolveLabel(winner, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      // L<number> — loser based on prediction (predict opposite winner)
+      const l = label.match(/^L(\d+)$/);
+      if (l) {
+        const mid = parseInt(l[1]);
+        const match = WC_MATCHES.find(m => m.id === mid);
+        if (!match) return null;
+        const pred = predictions[mid];
+        if (!pred || !pred.winner) return null;
+        // Predict the loser: opposite of predicted winner
+        const predictedWinner = pred.winner;
+        const loser = predictedWinner === 'draw' ? null : 
+                      (predictedWinner === match.home ? match.away : match.home);
+        if (!loser) return null;
+        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
+        // If loser is a slot, resolve it recursively
+        const resolved = resolveLabel(loser, seen);
+        map[label] = resolved;
+        return resolved;
+      }
+
+      return null;
+    };
+
+    return resolveLabel(slot);
   },
 };
