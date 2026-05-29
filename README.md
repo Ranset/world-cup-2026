@@ -15,23 +15,6 @@ Aplicación web progresiva (PWA) para seguir el Mundial de Fútbol 2026 que se c
 - **48 selecciones** con banderas oficiales
 - **16 estadios** de México, USA y Canadá
 
-## 🚀 Despliegue en GitHub Pages
-
-### Opción 1: Subir directamente
-1. Crea un repositorio en GitHub (ej: `worldcup2026`)
-2. Sube todos los archivos tal como están (mantén la estructura de carpetas)
-3. Ve a **Settings → Pages → Source: main branch / root**
-4. En ~1 minuto estará en: `https://TU_USUARIO.github.io/worldcup2026/`
-
-### Opción 2: GitHub CLI
-```bash
-git init
-git add .
-git commit -m "World Cup 2026 App 🏆"
-gh repo create worldcup2026 --public --push
-# Luego activa Pages en Settings
-```
-
 ## 📁 Estructura
 ```
 world-cup-2026/
@@ -81,6 +64,3 @@ world-cup-2026/
 - **48 selecciones** en 12 grupos (A–L)
 - **104 partidos**: 72 de grupo + 16 (R32) + 8 (R16) + 4 (QF) + 2 (SF) + Tercer lugar + Final
 - Grupos y calendario basados en el sorteo oficial de diciembre 2024
-
----
-*Desarrollado con ❤️ para los aficionados del fútbol mundial*
