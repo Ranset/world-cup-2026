@@ -182,7 +182,7 @@ function home(c) {
     <div style="text-align:center;padding:20px 0;font-family:var(--font-cond);
          font-size:.72rem;color:var(--text-3);letter-spacing:1px" class="fade-in">
       FIFA WORLD CUP 2026™ &nbsp;·&nbsp; 48 SELECCIONES &nbsp;·&nbsp; 104 PARTIDOS<br>
-      Aplicación personal — v3
+      Aplicación personal — v4
     </div>`;
 
   renderRecent();

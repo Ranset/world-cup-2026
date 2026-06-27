@@ -94,6 +94,7 @@ const WC_VENUES = {
   LINCOLN:  { name:'Lincoln Financial Field',   city:'Filadelfia',       country:'EE. UU.',       capacity:69328, flag:'🇺🇸' },
   LUMEN:    { name:'Lumen Field',               city:'Seattle',          country:'EE. UU.',       capacity:69000, flag:'🇺🇸' },
   MERCEDES: { name:'Mercedes-Benz Stadium',     city:'Atlanta',          country:'EE. UU.',       capacity:71000, flag:'🇺🇸' },
+  NRG:      { name:'NRG Stadium',               city:'Houston',          country:'EE. UU.',       capacity:72220, flag:'🇺🇸' },
   BC:       { name:'BC Place',                  city:'Vancouver',        country:'Canadá',        capacity:54500, flag:'🇨🇦' },
   BMO:      { name:'BMO Field',                 city:'Toronto',          country:'Canadá',        capacity:45736, flag:'🇨🇦' },
 };
@@ -215,48 +216,48 @@ _matchId = 73;
 // ============================================================
 const WC_MATCHES_KNOCKOUT = [
   // ── DIECISEISAVOS DE FINAL (16 matches) — Jun 28 – Jul 3 ────────────
-  { id:73, date:'2026-06-28',time:'TBD',home:'2A', away:'2B',         venue:'SOFI',    phase:'r32',slot:'R32-1', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:74, date:'2026-06-29',time:'TBD',home:'1E', away:'3ABCDF',     venue:'GILLETTE',phase:'r32',slot:'R32-2', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:75, date:'2026-06-29',time:'TBD',home:'1F', away:'2C',         venue:'BBVA',    phase:'r32',slot:'R32-3', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:76, date:'2026-06-29',time:'TBD',home:'1C', away:'2F',         venue:'NRG',     phase:'r32',slot:'R32-4', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:77, date:'2026-06-30',time:'TBD',home:'1I', away:'3CDFGH',     venue:'METLIFE', phase:'r32',slot:'R32-5', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:78, date:'2026-06-30',time:'TBD',home:'2E', away:'2I',         venue:'ATT',     phase:'r32',slot:'R32-6', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:79, date:'2026-06-30',time:'TBD',home:'1A', away:'3CEFHI',     venue:'AZTECA',  phase:'r32',slot:'R32-7', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:80, date:'2026-07-01',time:'TBD',home:'1L', away:'3EHIJK',     venue:'MERCEDES',phase:'r32',slot:'R32-8', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:81, date:'2026-07-01',time:'TBD',home:'1D', away:'3BEFIJ',     venue:'LEVIS',   phase:'r32',slot:'R32-9', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:82, date:'2026-07-01',time:'TBD',home:'1G', away:'3AEHIJ',     venue:'LUMEN',   phase:'r32',slot:'R32-10',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:83, date:'2026-07-02',time:'TBD',home:'2K', away:'2L',         venue:'BMO',     phase:'r32',slot:'R32-11',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:84, date:'2026-07-02',time:'TBD',home:'1H', away:'2J',         venue:'SOFI',    phase:'r32',slot:'R32-12',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:85, date:'2026-07-02',time:'TBD',home:'1B', away:'3EFGIJ',     venue:'BC',      phase:'r32',slot:'R32-13',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:86, date:'2026-07-03',time:'TBD',home:'1J', away:'2H',         venue:'HARD',    phase:'r32',slot:'R32-14',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:87, date:'2026-07-03',time:'TBD',home:'1K', away:'3DEIJL',     venue:'ARROW',   phase:'r32',slot:'R32-15',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:88, date:'2026-07-03',time:'TBD',home:'2D', away:'2G',         venue:'ATT',     phase:'r32',slot:'R32-16',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:73, date:'2026-06-28',time:'14:00',home:'2A', away:'2B',         venue:'SOFI',    phase:'r32',slot:'R32-1', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:76, date:'2026-06-29',time:'12:00',home:'1C', away:'2F',         venue:'NRG',     phase:'r32',slot:'R32-4', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:74, date:'2026-06-29',time:'15:30',home:'1E', away:'3ABCDF',     venue:'GILLETTE',phase:'r32',slot:'R32-2', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:75, date:'2026-06-29',time:'20:00',home:'1F', away:'2C',         venue:'BBVA',    phase:'r32',slot:'R32-3', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:78, date:'2026-06-30',time:'12:00',home:'2E', away:'2I',         venue:'ATT',     phase:'r32',slot:'R32-6', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:77, date:'2026-06-30',time:'16:00',home:'1I', away:'3CDFGH',     venue:'METLIFE', phase:'r32',slot:'R32-5', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:79, date:'2026-06-30',time:'20:00',home:'1A', away:'3CEFHI',     venue:'AZTECA',  phase:'r32',slot:'R32-7', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:80, date:'2026-07-01',time:'11:00',home:'1L', away:'3EHIJK',     venue:'MERCEDES',phase:'r32',slot:'R32-8', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:82, date:'2026-07-01',time:'15:00',home:'1G', away:'3AEHIJ',     venue:'LUMEN',   phase:'r32',slot:'R32-10',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:81, date:'2026-07-01',time:'19:00',home:'1D', away:'3BEFIJ',     venue:'LEVIS',   phase:'r32',slot:'R32-9', homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:84, date:'2026-07-02',time:'14:00',home:'1H', away:'2J',         venue:'SOFI',    phase:'r32',slot:'R32-12',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:83, date:'2026-07-02',time:'18:00',home:'2K', away:'2L',         venue:'BMO',     phase:'r32',slot:'R32-11',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:85, date:'2026-07-02',time:'22:00',home:'1B', away:'3EFGIJ',     venue:'BC',      phase:'r32',slot:'R32-13',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:88, date:'2026-07-03',time:'13:00',home:'2D', away:'2G',         venue:'ATT',     phase:'r32',slot:'R32-16',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:86, date:'2026-07-03',time:'17:00',home:'1J', away:'2H',         venue:'HARD',    phase:'r32',slot:'R32-14',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:87, date:'2026-07-03',time:'20:30',home:'1K', away:'3DEIJL',     venue:'ARROW',   phase:'r32',slot:'R32-15',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
   
   // ── OCTAVOS DE FINAL (8 matches) — Jul 4–7 ───────────────
-  { id:89, date:'2026-07-04',time:'TBD',home:'W74',away:'W77',venue:'LINCOLN', phase:'r16',slot:'R16-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:90, date:'2026-07-04',time:'TBD',home:'W73',away:'W75',venue:'NRG',     phase:'r16',slot:'R16-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:91, date:'2026-07-05',time:'TBD',home:'W76',away:'W78',venue:'METLIFE', phase:'r16',slot:'R16-3',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:92, date:'2026-07-05',time:'TBD',home:'W79',away:'W80',venue:'AZTECA',  phase:'r16',slot:'R16-4',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:93, date:'2026-07-06',time:'TBD',home:'W83',away:'W84',venue:'ATT',     phase:'r16',slot:'R16-5',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:94, date:'2026-07-06',time:'TBD',home:'W81',away:'W82',venue:'LUMEN',   phase:'r16',slot:'R16-6',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:95, date:'2026-07-07',time:'TBD',home:'W86',away:'W88',venue:'MERCEDES',phase:'r16',slot:'R16-7',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:96, date:'2026-07-07',time:'TBD',home:'W85',away:'W87',venue:'BC',      phase:'r16',slot:'R16-8',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:90, date:'2026-07-04',time:'12:00',home:'W73',away:'W75',venue:'NRG',     phase:'r16',slot:'R16-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:89, date:'2026-07-04',time:'16:00',home:'W74',away:'W77',venue:'LINCOLN', phase:'r16',slot:'R16-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:91, date:'2026-07-05',time:'15:00',home:'W76',away:'W78',venue:'METLIFE', phase:'r16',slot:'R16-3',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:92, date:'2026-07-05',time:'19:00',home:'W79',away:'W80',venue:'AZTECA',  phase:'r16',slot:'R16-4',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:93, date:'2026-07-06',time:'14:00',home:'W83',away:'W84',venue:'ATT',     phase:'r16',slot:'R16-5',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:94, date:'2026-07-06',time:'19:00',home:'W81',away:'W82',venue:'LUMEN',   phase:'r16',slot:'R16-6',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:95, date:'2026-07-07',time:'11:00',home:'W86',away:'W88',venue:'MERCEDES',phase:'r16',slot:'R16-7',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:96, date:'2026-07-07',time:'15:00',home:'W85',away:'W87',venue:'BC',      phase:'r16',slot:'R16-8',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
   
   // ── CUARTOS DE FINAL (4 matches) — Jul 9–11 ─────────────
-  { id:97, date:'2026-07-09',time:'TBD',home:'W89',away:'W90',venue:'GILLETTE',phase:'qf',slot:'QF-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:98, date:'2026-07-10',time:'TBD',home:'W93',away:'W94',venue:'SOFI',    phase:'qf',slot:'QF-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:99, date:'2026-07-11',time:'TBD',home:'W91',away:'W92',venue:'HARD',    phase:'qf',slot:'QF-3',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:100,date:'2026-07-11',time:'TBD',home:'W95',away:'W96',venue:'ARROW',   phase:'qf',slot:'QF-4',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:97, date:'2026-07-09',time:'15:00',home:'W89',away:'W90',venue:'GILLETTE',phase:'qf',slot:'QF-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:98, date:'2026-07-10',time:'14:00',home:'W93',away:'W94',venue:'SOFI',    phase:'qf',slot:'QF-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:99, date:'2026-07-11',time:'16:00',home:'W91',away:'W92',venue:'HARD',    phase:'qf',slot:'QF-3',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:100,date:'2026-07-11',time:'20:00',home:'W95',away:'W96',venue:'ARROW',   phase:'qf',slot:'QF-4',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
   
   // ── SEMIFINALES (2 matches) — Jul 14–15 ──────────────────
-  { id:101,date:'2026-07-14',time:'TBD',home:'W97',away:'W98',venue:'ATT',     phase:'sf',slot:'SF-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
-  { id:102,date:'2026-07-15',time:'TBD',home:'W99',away:'W100',venue:'MERCEDES',phase:'sf',slot:'SF-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:101,date:'2026-07-14',time:'14:00',home:'W97',away:'W98',venue:'ATT',     phase:'sf',slot:'SF-1',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:102,date:'2026-07-15',time:'14:00',home:'W99',away:'W100',venue:'MERCEDES',phase:'sf',slot:'SF-2',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
   
   // ── TERCER PUESTO — Jul 18 ────────────────────────────────
-  { id:103,date:'2026-07-18',time:'TBD',home:'L101',away:'L102',venue:'HARD',   phase:'3rd',slot:'3RD',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:103,date:'2026-07-18',time:'16:00',home:'L101',away:'L102',venue:'HARD',   phase:'3rd',slot:'3RD',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
   
   // ── GRAN FINAL — Jul 19 ──────────────────────────────────
-  { id:104,date:'2026-07-19',time:'TBD',home:'W101',away:'W102',venue:'METLIFE',phase:'final',slot:'FINAL',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
+  { id:104,date:'2026-07-19',time:'14:00',home:'W101',away:'W102',venue:'METLIFE',phase:'final',slot:'FINAL',homeScore:null,awayScore:null,status:'scheduled',homePens:null,awayPens:null },
 ];
 
 const WC_MATCHES = [...WC_MATCHES_GROUP, ...WC_MATCHES_KNOCKOUT];
