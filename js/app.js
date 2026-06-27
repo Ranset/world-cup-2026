@@ -6,6 +6,8 @@
 let currentView      = 'home';
 let currentGroup     = 'all';
 let currentPhase     = 'all';
+let currentPredMode  = 'group';  // 'group' | 'knockout' — which of the two predictions is shown
+let currentPredRound = 'all';    // knockout sub-filter: 'all'|'r32'|'r16'|'qf'|'sf'|'3rd'|'final'
 let editingMatchId   = null;
 let countdownTimer   = null;
 let deferredInstall  = null;
@@ -36,6 +38,8 @@ function navigateTo(view) {
   if (view !== 'calendar' && view !== 'predictions') {
     currentPhase = 'all';
     currentGroup = 'all';
+    currentPredMode = 'group';
+    currentPredRound = 'all';
   }
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.view === view)
@@ -65,6 +69,8 @@ function home(c) {
   const predStats = Tournament.getPredictionStats();
   const results   = Storage.getResults();
   const played    = Object.values(results).filter(r => r.status === 'finished').length;
+  const liveNow   = Tournament.getLiveMatches();
+  lastLiveSignature = null; // force a fresh render into the new #live-now-list below
 
   c.innerHTML = `
     <!-- Hero -->
@@ -91,6 +97,12 @@ function home(c) {
       </div>
       <button class="btn btn-gold btn-sm" onclick="triggerInstall()">Instalar</button>
       <button onclick="dismissInstall()" style="color:rgba(255,255,255,.5);font-size:1.1rem;padding:4px">✕</button>
+    </div>
+
+    <!-- Live now -->
+    <div id="live-now-section" class="fade-in" style="${liveNow.length?'':'display:none'}">
+      <div class="section-sub" style="margin-top:0">🔴 Jugando ahora</div>
+      <div id="live-now-list" style="margin-bottom:16px"></div>
     </div>
 
     <!-- Countdown -->
@@ -182,12 +194,31 @@ function home(c) {
     <div style="text-align:center;padding:20px 0;font-family:var(--font-cond);
          font-size:.72rem;color:var(--text-3);letter-spacing:1px" class="fade-in">
       FIFA WORLD CUP 2026™ &nbsp;·&nbsp; 48 SELECCIONES &nbsp;·&nbsp; 104 PARTIDOS<br>
-      Aplicación personal — v4
+      Aplicación personal — v6
     </div>`;
 
   renderRecent();
-  startCountdown();
+  startCountdown(); // also renders the "live now" list, immediately and every tick
   checkInstallBanner();
+}
+
+let lastLiveSignature = null;
+
+function renderLiveNow() {
+  const section = document.getElementById('live-now-section');
+  const el       = document.getElementById('live-now-list');
+  if (!el || !section) return;
+  const liveNow = Tournament.getLiveMatches();
+
+  // countdownTick() calls this every second, but the live list itself rarely
+  // changes second to second — skip the re-render (and the fade-in replay it
+  // would cause) unless something actually did.
+  const signature = JSON.stringify(liveNow.map(m => [m.id, m.homeScore, m.awayScore, m.homePens, m.awayPens, m.status]));
+  if (signature === lastLiveSignature) return;
+  lastLiveSignature = signature;
+
+  section.style.display = liveNow.length ? '' : 'none';
+  el.innerHTML = liveNow.map(m => matchCard(m, { compact:true, showEdit:true })).join('');
 }
 
 function renderRecent() {
@@ -467,52 +498,81 @@ function bracketMatch(m) {
    PREDICTIONS VIEW
 ═══════════════════════════════════════════════════════════ */
 function predictions(c) {
-  const predStats = Tournament.getPredictionStats();
-  const preds     = Storage.getPredictions();
-  const results   = Storage.getResults();
+  const general = Tournament.getPredictionStats();
+  const { group, knockout } = general;
+  const modeStats = currentPredMode === 'group' ? group : knockout;
+  const modeLabel = currentPredMode === 'group' ? 'Fase de Grupos' : 'Eliminatorias';
 
-  const phases = [
+  const rounds = [
     { key:'all',  label:'Todos' },
-    { key:'group',label:'Grupos' },
     { key:'r32',  label:'Ronda 32' },
     { key:'r16',  label:'Octavos' },
     { key:'qf',   label:'Cuartos' },
     { key:'sf',   label:'Semis' },
+    { key:'3rd',  label:'3er Puesto' },
     { key:'final',label:'Final' },
   ];
+  const grps = ['all','A','B','C','D','E','F','G','H','I','J','K','L'];
 
   // Ring calc
   const R   = 38, circ = 2 * Math.PI * R;
-  const pct = predStats.percentage / 100;
+  const pct = modeStats.percentage / 100;
 
   c.innerHTML = `
     <div class="section-header"><div class="section-title">MI PRONÓSTICO</div></div>
 
-    <!-- Score card -->
+    <!-- General summary: combined % + the two phase %s -->
+    <div class="card fade-in" style="margin-bottom:14px">
+      <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div onclick="predSetMode('group')" style="cursor:pointer">
+          <div style="font-family:var(--font-head);font-size:1.6rem;color:${currentPredMode==='group'?'var(--gold)':'var(--text-2)'}">${group.percentage}%</div>
+          <div style="font-family:var(--font-cond);font-size:.68rem;color:var(--text-3);text-transform:uppercase">Fase de Grupos</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:2rem;color:var(--blue)">${general.percentage}%</div>
+          <div style="font-family:var(--font-cond);font-size:.68rem;color:var(--text-3);text-transform:uppercase">General</div>
+        </div>
+        <div onclick="predSetMode('knockout')" style="cursor:pointer">
+          <div style="font-family:var(--font-head);font-size:1.6rem;color:${currentPredMode==='knockout'?'var(--gold)':'var(--text-2)'}">${knockout.percentage}%</div>
+          <div style="font-family:var(--font-cond);font-size:.68rem;color:var(--text-3);text-transform:uppercase">Eliminatorias</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode tabs -->
+    <div class="filter-bar fade-in">
+      <button class="filter-chip${currentPredMode==='group'?' active':''}" onclick="predSetMode('group')">⚽ Fase de Grupos</button>
+      <button class="filter-chip${currentPredMode==='knockout'?' active':''}" onclick="predSetMode('knockout')">🏆 Eliminatorias</button>
+    </div>
+
+    <!-- Active mode score card -->
     <div class="pred-score-card fade-in">
       <div class="pred-score-left">
-        <div class="pred-score-pct">${predStats.percentage}<span style="font-size:1.5rem">%</span></div>
-        <div class="pred-score-label">de aciertos</div>
+        <div class="pred-score-pct">${modeStats.percentage}<span style="font-size:1.5rem">%</span></div>
+        <div class="pred-score-label">de aciertos · ${modeLabel}</div>
         <div class="pred-score-detail">
-          <span class="color-green">✅ ${predStats.correct} correctos</span> &nbsp;
-          <span class="color-red">❌ ${predStats.total - predStats.correct} incorrectos</span><br>
-          <span style="color:var(--text-3)">⏳ ${predStats.pending} pendientes de resultado</span>
+          <span class="color-green">✅ ${modeStats.correct} correctos</span> &nbsp;
+          <span class="color-red">❌ ${modeStats.total - modeStats.correct} incorrectos</span><br>
+          <span style="color:var(--text-3)">⏳ ${modeStats.pending} pendientes de resultado</span>
         </div>
       </div>
       <svg width="96" height="96" viewBox="0 0 96 96">
         <circle cx="48" cy="48" r="${R}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="10"/>
-        <circle cx="48" cy="48" r="${R}" fill="none" stroke="${predStats.percentage>=70?'#00A651':predStats.percentage>=40?'#D4AF37':'#E30613'}"
+        <circle cx="48" cy="48" r="${R}" fill="none" stroke="${modeStats.percentage>=70?'#00A651':modeStats.percentage>=40?'#D4AF37':'#E30613'}"
           stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}"
           stroke-dashoffset="${circ * (1 - pct)}" transform="rotate(-90 48 48)"/>
         <text x="48" y="54" text-anchor="middle" fill="white"
-          font-family="'Bebas Neue',sans-serif" font-size="22">${predStats.percentage}%</text>
+          font-family="'Bebas Neue',sans-serif" font-size="22">${modeStats.percentage}%</text>
       </svg>
     </div>
 
-    <!-- Filters -->
+    <!-- Sub-filters -->
     <div class="filter-bar fade-in">
-      ${phases.map(p => `<button class="filter-chip${currentPhase===p.key?' active':''}"
-        onclick="predSetPhase('${p.key}')">${p.label}</button>`).join('')}
+      ${currentPredMode === 'group'
+        ? grps.map(g => `<button class="filter-chip${currentGroup===g?' active':''}"
+            onclick="predSetGroup('${g}')">${g==='all'?'Todos los grupos':'Grupo '+g}</button>`).join('')
+        : rounds.map(r => `<button class="filter-chip${currentPredRound===r.key?' active':''}"
+            onclick="predSetRound('${r.key}')">${r.label}</button>`).join('')}
     </div>
 
     <!-- Action bar -->
@@ -523,16 +583,27 @@ function predictions(c) {
 
     <div id="pred-list" class="fade-in"></div>`;
 
-  renderPredList(preds, results);
+  renderPredList();
 }
 
-window.predSetPhase = function(p) { currentPhase = p; navigateTo('predictions'); };
+window.predSetMode  = function(mode) { currentPredMode = mode; navigateTo('predictions'); };
+window.predSetRound = function(r)    { currentPredRound = r;   navigateTo('predictions'); };
+window.predSetGroup = function(g)    { currentGroup = g;       navigateTo('predictions'); };
 
-function renderPredList(preds, results) {
-  const el = document.getElementById('pred-list');
+function renderPredList() {
+  const el      = document.getElementById('pred-list');
   if (!el) return;
+  const preds   = Storage.getPredictions();
+  const results = Storage.getResults();
+
   let matches = WC_MATCHES.map(m => ({ ...m, ...(results[m.id]||{}) }));
-  if (currentPhase !== 'all') matches = matches.filter(m => m.phase === currentPhase);
+  if (currentPredMode === 'group') {
+    matches = matches.filter(m => m.phase === 'group');
+    if (currentGroup !== 'all') matches = matches.filter(m => m.group === currentGroup);
+  } else {
+    matches = matches.filter(m => m.phase !== 'group');
+    if (currentPredRound !== 'all') matches = matches.filter(m => m.phase === currentPredRound);
+  }
 
   if (!matches.length) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div>
@@ -621,9 +692,7 @@ function predCard(m, preds, results) {
 window.savePred = function(matchId, winner) {
   Storage.savePrediction(matchId, winner);
   toast('Pronóstico guardado', 'success');
-  const preds   = Storage.getPredictions();
-  const results = Storage.getResults();
-  renderPredList(preds, results);
+  renderPredList();
 };
 
 window.clearPredictions = function() {
@@ -639,6 +708,7 @@ STATS VIEW
 function stats(c) {
   const s      = Tournament.getStats();
   const ps     = Tournament.getPredictionStats();
+  const preds  = Storage.getPredictions();
   const total  = s.matchesPlayed || 1;
 
   c.innerHTML = `
@@ -699,13 +769,14 @@ function stats(c) {
       </div>
       ${ps.details.length ? `<div style="border-top:1px solid var(--border)">
         ${ps.details.slice(0,10).map(d => {
-          const h = WC_TEAMS[d.match.home], a = WC_TEAMS[d.match.away];
+          const h = WC_TEAMS[Tournament.resolveSlot(d.match.home)], a = WC_TEAMS[Tournament.resolveSlot(d.match.away)];
           const r = Storage.getResults()[d.match.id];
+          const predTeam = d.predicted === 'draw' ? 'draw' : (Tournament.resolveSlotByPredictions(d.predicted, preds) || d.predicted);
           return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;
                   border-bottom:1px solid var(--border);font-size:.82rem">
             <span>${d.correct ? '✅' : '❌'}</span>
             <span style="flex:1;font-family:var(--font-cond)">${h?h.flag:''} ${h?h.code:d.match.home} ${r?r.homeScore:''} – ${r?r.awayScore:''} ${a?a.code:d.match.away} ${a?a.flag:''}</span>
-            <span style="color:var(--text-3)">→ ${d.predicted==='draw'?'Empate':(WC_TEAMS[d.predicted]?.code||d.predicted)}</span>
+            <span style="color:var(--text-3)">→ ${predTeam==='draw'?'Empate':(WC_TEAMS[predTeam]?.code||predTeam)}</span>
           </div>`;
         }).join('')}
         ${ps.details.length > 10 ? `<div style="padding:8px 14px;font-size:.78rem;color:var(--text-3);text-align:center">
@@ -940,6 +1011,8 @@ function startCountdown() {
 }
 
 function countdownTick() {
+  renderLiveNow();
+
   const el = document.getElementById('countdown-display');
   if (!el) { clearInterval(countdownTimer); return; }
 
@@ -949,13 +1022,31 @@ function countdownTick() {
     return;
   }
 
+  // Knockout matches resolve to real teams via the bracket; group matches
+  // already have real team ids in home/away (resolveSlot is a no-op for those).
+  const ht = WC_TEAMS[Tournament.resolveSlot(next.home)] || WC_TEAMS[next.home];
+  const at = WC_TEAMS[Tournament.resolveSlot(next.away)] || WC_TEAMS[next.away];
+  const vn = WC_VENUES[next.venue];
+
+  // Knockout matches keep time:'TBD' until a real kickoff is entered — show
+  // the date without a fake numeric countdown rather than ticking toward
+  // a made-up time.
+  if (!next.time || next.time === 'TBD') {
+    el.innerHTML = `
+      <div class="countdown-label">⏱ Próximo partido</div>
+      <div class="countdown-match">
+        ${ht?ht.flag:'🏳'} ${ht?ht.name:next.home}
+        <span style="opacity:.4;margin:0 6px">vs</span>
+        ${at?at.flag:'🏳'} ${at?at.name:next.away}
+      </div>
+      <div class="countdown-venue">📍 ${vn?vn.name+', '+vn.city:''} &nbsp;·&nbsp; ${fmtDate(next.date)} · Hora por confirmar</div>`;
+    return;
+  }
+
   const [y,mo,d] = next.date.split('-').map(Number);
   const [h,min]  = next.time.split(':').map(Number);
   const target   = new Date(y, mo-1, d, h, min);
   const diff     = target - new Date();
-
-  const ht = WC_TEAMS[next.home], at = WC_TEAMS[next.away];
-  const vn = WC_VENUES[next.venue];
 
   if (diff <= 0) {
     el.innerHTML = `<div class="countdown-label">Próximo partido</div>
@@ -1048,12 +1139,13 @@ window.exportPredictionsPDF = function() {
   WC_MATCHES.forEach((m, idx) => {
     const pred = preds[m.id]; if (!pred) return;
     if (y > 270) { doc.addPage(); y = 20; }
-    const h = WC_TEAMS[m.home], a = WC_TEAMS[m.away];
+    const h = WC_TEAMS[Tournament.resolveSlot(m.home)], a = WC_TEAMS[Tournament.resolveSlot(m.away)];
     const r = results[m.id];
     const done = r && r.status === 'finished';
-    const winner = done ? Tournament.getMatchWinner({...m,...r}) : null;
-    const actual = winner || (done ? 'draw' : null);
-    const correct = pred && actual && pred.winner === actual;
+    const winnerRaw = done ? Tournament.getMatchWinner({...m,...r}) : null;
+    const actual = winnerRaw ? (Tournament.resolveSlot(winnerRaw) || winnerRaw) : (done ? 'draw' : null);
+    const predWinner = pred.winner === 'draw' ? 'draw' : (Tournament.resolveSlotByPredictions(pred.winner, preds) || pred.winner);
+    const correct = pred && actual && predWinner === actual;
 
     doc.setTextColor(120,120,120); doc.text(String(idx+1), 14, y);
     doc.setTextColor(30,30,30);
@@ -1062,7 +1154,7 @@ window.exportPredictionsPDF = function() {
     doc.setTextColor(100,100,120);
     doc.text((PHASE_LABELS[m.phase]||m.phase).substring(0,14), 85, y);
     doc.setTextColor(27,20,100); doc.setFont('helvetica','bold');
-    const predLabel = pred.winner==='draw'?'Empate':(WC_TEAMS[pred.winner]?.name||pred.winner);
+    const predLabel = predWinner==='draw'?'Empate':(WC_TEAMS[predWinner]?.name||predWinner);
     doc.text(predLabel.substring(0,16), 130, y);
     doc.setFont('helvetica','normal');
     if (done) {

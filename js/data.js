@@ -212,7 +212,6 @@ _matchId = 73;
 // ============================================================
 // KNOCKOUT STAGE — IDs start at 73 (Official FIFA Match Numbers)
 // Slot labels: '1A' = 1st Group A, 'W73' = winner match 73
-// Horarios oficiales por definir ('TBD')
 // ============================================================
 const WC_MATCHES_KNOCKOUT = [
   // ── DIECISEISAVOS DE FINAL (16 matches) — Jun 28 – Jul 3 ────────────

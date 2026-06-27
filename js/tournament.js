@@ -107,68 +107,6 @@ const Tournament = {
     return st.length >= 3 ? st[2].team.id : null;
   },
 
-  // ── Predicted group standings from match predictions ──────
-  getPredictedGroupStandings(group, predictions = {}) {
-    const matches = this.getGroupMatches(group);
-    const teams   = Object.values(WC_TEAMS).filter(t => t.group === group);
-    const table   = {};
-    let hasPredictions = false;
-
-    teams.forEach(t => {
-      table[t.id] = { team:t, p:0, w:0, d:0, l:0, gf:0, ga:0, gd:0, pts:0 };
-    });
-
-    matches.forEach(m => {
-      const pred = predictions[m.id];
-      if (!pred || !pred.winner) return;
-      const h = table[m.home], a = table[m.away];
-      if (!h || !a) return;
-
-      const homeWin = pred.winner === m.home;
-      const awayWin = pred.winner === m.away;
-      const draw    = pred.winner === 'draw';
-      if (!homeWin && !awayWin && !draw) return;
-
-      hasPredictions = true;
-      h.p++; a.p++;
-      let homeGoals = 0, awayGoals = 0;
-      if (draw) {
-        h.d++; a.d++; h.pts++; a.pts++;
-      } else if (homeWin) {
-        h.w++; h.pts += 3; a.l++; homeGoals = 1;
-      } else {
-        a.w++; a.pts += 3; h.l++; awayGoals = 1;
-      }
-
-      h.gf += homeGoals; h.ga += awayGoals;
-      a.gf += awayGoals; a.ga += homeGoals;
-    });
-
-    if (!hasPredictions) return [];
-
-    Object.values(table).forEach(r => r.gd = r.gf - r.ga);
-
-    return Object.values(table).sort((a, b) =>
-      b.pts - a.pts ||
-      b.gd  - a.gd  ||
-      b.gf  - a.gf  ||
-      a.team.name.localeCompare(b.team.name)
-    );
-  },
-
-  // ── Predicted best third-placed teams ─────────────────────
-  getPredictedBestThirds(predictions = {}) {
-    const thirds = [];
-    WC_GROUPS.forEach(g => {
-      let st = this.getPredictedGroupStandings(g, predictions);
-      if (!st.length) st = this.getGroupStandings(g);
-      if (st.length >= 3) thirds.push({ ...st[2], group: g });
-    });
-    return thirds
-      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
-      .slice(0, 8);
-  },
-
   // ── Resolve slot label → team ID ─────────────────────────
   // Slot examples: '1A', '2B', '3DEF', 'W101', 'L401'
   resolveSlot(slot) {
@@ -244,22 +182,43 @@ const Tournament = {
   },
 
   // ── Prediction accuracy ───────────────────────────────────
-  getPredictionStats() {
-    const results     = Storage.getResults();
+  // scope: 'group' (fase de grupos only), 'knockout' (eliminatorias only), or
+  // omitted for the general/combined stat (average of the two phase percentages,
+  // with correct/total/pending as straight sums of both phases).
+  getPredictionStats(scope) {
+    if (scope !== 'group' && scope !== 'knockout') {
+      const group    = this.getPredictionStats('group');
+      const knockout = this.getPredictionStats('knockout');
+      return {
+        percentage: Math.round((group.percentage + knockout.percentage) / 2),
+        correct: group.correct + knockout.correct,
+        total: group.total + knockout.total,
+        pending: group.pending + knockout.pending,
+        details: [...group.details, ...knockout.details],
+        group, knockout,
+      };
+    }
+
     const predictions = Storage.getPredictions();
-    const matches     = this.getMatches();
+    const matches = this.getMatches().filter(m =>
+      scope === 'group' ? m.phase === 'group' : m.phase !== 'group'
+    );
     let total = 0, correct = 0, pending = 0;
     const details = [];
 
     matches.forEach(m => {
-      const pred   = predictions[m.id];
-      const result = results[m.id];
-      if (!pred) return;
-      if (!result || result.status !== 'finished') { pending++; return; }
+      const pred = predictions[m.id];
+      if (!pred || !pred.winner) return;
+      if (m.status !== 'finished' || m.homeScore === null || m.homeScore === undefined) { pending++; return; }
       total++;
-      const winner        = this.getMatchWinner({ ...m, ...result });
-      const actualOutcome = winner || 'draw';
-      const isCorrect     = pred.winner === actualOutcome;
+      // Resolve both sides to real team ids — for group matches this is a no-op
+      // (home/away are already team ids), but knockout matches store raw slot
+      // labels (e.g. 'W74') in m.home/m.away, so they must be resolved before
+      // comparing against the (already-resolved) predicted winner.
+      const winnerRaw      = this.getMatchWinner(m);
+      const actualOutcome  = winnerRaw ? (this.resolveSlot(winnerRaw) || winnerRaw) : 'draw';
+      const predictedTeam  = pred.winner === 'draw' ? 'draw' : (this.resolveSlotByPredictions(pred.winner, predictions) || pred.winner);
+      const isCorrect      = predictedTeam === actualOutcome;
       if (isCorrect) correct++;
       details.push({ match: m, predicted: pred.winner, actual: actualOutcome, correct: isCorrect });
     });
@@ -271,23 +230,52 @@ const Tournament = {
     };
   },
 
-  // ── Next upcoming match ───────────────────────────────────
+  // ── Next upcoming match (group OR knockout) ──────────────
+  // Knockout matches keep date:'TBD' for time until a real kickoff is known —
+  // those are still valid "next match" candidates (compared by date only),
+  // just without a precise countdown (see countdownTick in app.js).
   getNextMatch() {
-    const results = Storage.getResults();
-    const now     = new Date();
+    const now      = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-    // Find group-stage matches that haven't been played yet
-    const upcoming = WC_MATCHES_GROUP.filter(m => {
-      const r = results[m.id];
-      if (r && r.status === 'finished') return false;
+    const upcoming = this.getMatches().filter(m => {
+      if (m.status === 'finished' || m.status === 'live') return false;
+      if (!m.time || m.time === 'TBD') return m.date >= todayStr;
       const [y,mo,d] = m.date.split('-').map(Number);
       const [h,min]  = m.time.split(':').map(Number);
       return new Date(y, mo-1, d, h, min) > now;
     }).sort((a, b) => {
-      return new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`);
+      const ta = (!a.time || a.time === 'TBD') ? `${a.date}T12:00` : `${a.date}T${a.time}`;
+      const tb = (!b.time || b.time === 'TBD') ? `${b.date}T12:00` : `${b.date}T${b.time}`;
+      return new Date(ta) - new Date(tb);
     });
 
     return upcoming[0] || null;
+  },
+
+  // ── Matches being played right now ───────────────────────
+  // A match counts as live if it's explicitly flagged status:'live' (set via
+  // the edit modal), or if its real kickoff has passed but it isn't finished
+  // and we're still within a plausible match-duration window. There's no real
+  // live feed here, so this is a clock-based approximation — knockout matches
+  // don't get a real kickoff time (time:'TBD') until someone edits it in, so
+  // only the explicit flag applies to them.
+  getLiveMatches() {
+    const LIVE_WINDOW_MS = 120 * 60 * 1000; // ~2h: regulation + stoppage/half-time buffer
+    const now = new Date();
+
+    return this.getMatches()
+      .filter(m => {
+        if (m.status === 'finished') return false;
+        if (m.status === 'live') return true;
+        if (!m.time || m.time === 'TBD') return false;
+        const [y, mo, d] = m.date.split('-').map(Number);
+        const [h, min]   = m.time.split(':').map(Number);
+        const kickoff    = new Date(y, mo - 1, d, h, min);
+        return now >= kickoff && (now - kickoff) < LIVE_WINDOW_MS;
+      })
+      .map(m => m.status === 'live' ? m : { ...m, status: 'live' })
+      .sort((a, b) => new Date(`${a.date}T${a.time==='TBD'?'00:00':a.time}`) - new Date(`${b.date}T${b.time==='TBD'?'00:00':b.time}`));
   },
 
   // ── Tournament statistics ─────────────────────────────────
@@ -365,26 +353,12 @@ const Tournament = {
       if (seen.has(label)) return null;
       seen.add(label);
 
-      // digit+letter pattern (1A,2B,3ABC) — use predicted group standings when available
+      // digit+letter pattern (1A,2B,3ABC) — group position always comes from the
+      // real-life group results, never from this prediction set (see resolveSlot)
       const posMatch = label.match(/^([123])([A-L]+)$/);
       if (posMatch) {
-        const pos = parseInt(posMatch[1]);
-        const groups = posMatch[2].split('');
-        if (pos === 3 && groups.length > 1) {
-          const bestThirds = this.getPredictedBestThirds(predictions);
-          const standingsFn = g => {
-            let st = this.getPredictedGroupStandings(g, predictions);
-            return st.length ? st : this.getGroupStandings(g);
-          };
-          map[label] = this.resolveBestThirdSlot(posMatch[2], bestThirds, standingsFn);
-          return map[label];
-        } else {
-          const g = posMatch[2][0];
-          let st = this.getPredictedGroupStandings(g, predictions);
-          if (!st.length) st = this.getGroupStandings(g);
-          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
-          return null;
-        }
+        map[label] = this.resolveSlot(label);
+        return map[label];
       }
 
       // W<number> — winner based on prediction
