@@ -182,7 +182,7 @@ function home(c) {
     <div style="text-align:center;padding:20px 0;font-family:var(--font-cond);
          font-size:.72rem;color:var(--text-3);letter-spacing:1px" class="fade-in">
       FIFA WORLD CUP 2026™ &nbsp;·&nbsp; 48 SELECCIONES &nbsp;·&nbsp; 104 PARTIDOS<br>
-      Aplicación personal — v2
+      Aplicación personal — v3
     </div>`;
 
   renderRecent();
@@ -732,8 +732,8 @@ function resultBar(label, val, total, color) {
    MATCH CARD (shared renderer)
 ═══════════════════════════════════════════════════════════ */
 function matchCard(m, opts = {}) {
-  const h       = WC_TEAMS[m.home];
-  const a       = WC_TEAMS[m.away];
+  const h       = WC_TEAMS[Tournament.resolveSlot(m.home)];
+  const a       = WC_TEAMS[Tournament.resolveSlot(m.away)];
   const venue   = WC_VENUES[m.venue];
   const done    = m.status === 'finished' && m.homeScore !== null && m.homeScore !== undefined;
   const live    = m.status === 'live';
