@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wc2026-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/static-server.cjs", "4173"],
+      "port": 4173
+    }
+  ]
+}

@@ -24,10 +24,11 @@ world-cup-2026/
 ├── css/
 │   └── style.css       ← Diseño FIFA+ completo
 ├── js/
-│   ├── data.js         ← 48 selecciones, 104 partidos, 16 estadios
-│   ├── storage.js      ← Capa de localStorage
-│   ├── tournament.js   ← Lógica de posiciones y bracket
-│   └── app.js          ← Vistas y navegación
+│   ├── data.js              ← 48 selecciones, 104 partidos, 16 estadios
+│   ├── thirdPlaceMatrix.js  ← Matriz oficial FIFA (495 combinaciones) de mejores terceros
+│   ├── storage.js           ← Capa de localStorage
+│   ├── tournament.js        ← Lógica de posiciones y bracket
+│   └── app.js               ← Vistas y navegación
 └── icons/
     ├── icon.svg
     ├── icon-192.png

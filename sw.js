@@ -2,12 +2,13 @@
 // WORLD CUP 2026 — SERVICE WORKER
 // ============================================================
 
-const CACHE_NAME = 'wc2026-v1';
+const CACHE_NAME = 'wc2026-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/data.js',
+  './js/thirdPlaceMatrix.js',
   './js/storage.js',
   './js/tournament.js',
   './js/app.js',

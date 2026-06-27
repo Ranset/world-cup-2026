@@ -67,6 +67,46 @@ const Tournament = {
       .slice(0, 8);
   },
 
+  // ── Official best-thirds ↔ group-winner pairing (FIFA matrix) ───────────
+  // Reverse lookup built once from the official fixture: candidate-letters
+  // string (e.g. 'ABCDF') -> the group whose winner sits in that Round-of-32
+  // slot (e.g. 'E', from match 74: 1E vs 3ABCDF). This pairing is a fixed
+  // property of the bracket, independent of which thirds actually qualify.
+  _thirdPlaceSlotOwner: (() => {
+    const map = {};
+    WC_MATCHES_KNOCKOUT.forEach(m => {
+      const home = typeof m.home === 'string' && m.home.match(/^1([A-L])$/);
+      const away = typeof m.away === 'string' && m.away.match(/^3([A-L]{2,})$/);
+      if (home && away) map[away[1]] = home[1];
+    });
+    return map;
+  })(),
+
+  // Finds the one matrix row whose 8 values are exactly this set of qualified
+  // third-place groups (order-independent). There's exactly one row per
+  // possible combination (495 = C(12,8)), so the match is unambiguous.
+  findThirdPlaceRow(qualifiedGroups) {
+    if (qualifiedGroups.length !== 8) return null;
+    const key = qualifiedGroups.slice().sort().join('');
+    return WC_THIRD_PLACE_MATRIX.find(row => Object.values(row).slice().sort().join('') === key) || null;
+  },
+
+  // Resolves a '3<groups>' slot (e.g. '3ABCDF') to an actual team id via the
+  // official matrix, so each of the 8 best thirds is assigned to exactly one
+  // group-winner and nobody re-meets a group-stage opponent.
+  // bestThirds: array of { group } for the 8 qualified third-placed teams.
+  // standingsFn: group -> standings array (real or predicted-with-fallback).
+  resolveBestThirdSlot(candidateGroups, bestThirds, standingsFn) {
+    const winnerGroup = this._thirdPlaceSlotOwner[candidateGroups];
+    if (!winnerGroup) return null;
+    const row = this.findThirdPlaceRow(bestThirds.map(t => t.group));
+    if (!row) return null;
+    const thirdGroup = row[winnerGroup];
+    if (!thirdGroup) return null;
+    const st = standingsFn(thirdGroup);
+    return st.length >= 3 ? st[2].team.id : null;
+  },
+
   // ── Predicted group standings from match predictions ──────
   getPredictedGroupStandings(group, predictions = {}) {
     const matches = this.getGroupMatches(group);
@@ -120,7 +160,8 @@ const Tournament = {
   getPredictedBestThirds(predictions = {}) {
     const thirds = [];
     WC_GROUPS.forEach(g => {
-      const st = this.getPredictedGroupStandings(g, predictions);
+      let st = this.getPredictedGroupStandings(g, predictions);
+      if (!st.length) st = this.getGroupStandings(g);
       if (st.length >= 3) thirds.push({ ...st[2], group: g });
     });
     return thirds
@@ -135,28 +176,16 @@ const Tournament = {
     // Already a real team?
     if (WC_TEAMS[slot]) return slot;
 
-    const results  = Storage.getResults();
-    const stored   = Storage.getKnockout();
-
-    // Cached resolution
-    if (stored[slot]) return stored[slot];
+    const results = Storage.getResults();
 
     // Pattern: digit + letter(s) — e.g. '1A', '2B', '3DEF'
     const posMatch = slot.match(/^([123])([A-L]+)$/);
     if (posMatch) {
       const pos   = parseInt(posMatch[1]);
-      const groups = posMatch[2].split('');
+      const groups = posMatch[2];
 
       if (pos === 3 && groups.length > 1) {
-        // Best third among listed groups — pick highest ranked
-        const candidates = [];
-        groups.forEach(g => {
-          const st = this.getGroupStandings(g);
-          if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
-        });
-        if (!candidates.length) return null;
-        candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-        return candidates[0].teamId;
+        return this.resolveBestThirdSlot(groups, this.getBestThirds(), g => this.getGroupStandings(g));
       } else {
         // Nth place in group G (single letter)
         const g  = groups[0];
@@ -302,84 +331,16 @@ const Tournament = {
   },
 
   // ── Build and cache knockout resolutions ───────────────────
+  // Snapshots resolveSlot() for every knockout slot, for export/import only —
+  // live views always call resolveSlot() directly so they reflect the latest
+  // results rather than this snapshot.
   // Produces an object that maps slot labels -> teamId and matchId -> {home, away}
   updateKnockout() {
-    const results = Storage.getResults();
     const map = {}; // slotLabel -> teamId or null
 
-    const resolveLabel = (label, seen = new Set()) => {
-      if (!label) return null;
-      if (WC_TEAMS[label]) return label;
-      if (map[label]) return map[label];
-      if (seen.has(label)) return null;
-      seen.add(label);
-
-      // digit+letter pattern (1A,2B,3ABC)
-      const posMatch = label.match(/^([123])([A-L]+)$/);
-      if (posMatch) {
-        const pos = parseInt(posMatch[1]);
-        const groups = posMatch[2].split('');
-        if (pos === 3 && groups.length > 1) {
-          const candidates = [];
-          groups.forEach(g => {
-            const st = this.getGroupStandings(g);
-            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
-          });
-          if (!candidates.length) return null;
-          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-          map[label] = candidates[0].teamId;
-          return map[label];
-        } else {
-          const g = posMatch[2][0];
-          const st = this.getGroupStandings(g);
-          if (st.length >= pos) { map[label] = st[pos-1].team.id; return map[label]; }
-          return null;
-        }
-      }
-
-      // W<number>
-      const w = label.match(/^W(\d+)$/);
-      if (w) {
-        const mid = parseInt(w[1]);
-        const match = WC_MATCHES.find(m => m.id === mid);
-        if (!match) return null;
-        const r = results[mid];
-        if (!r || r.status !== 'finished') return null;
-        const enriched = { ...match, ...r };
-        const winner = this.getMatchWinner(enriched);
-        if (!winner) return null;
-        if (WC_TEAMS[winner]) { map[label] = winner; return winner; }
-        const resolved = resolveLabel(winner, seen);
-        map[label] = resolved;
-        return resolved;
-      }
-
-      // L<number>
-      const l = label.match(/^L(\d+)$/);
-      if (l) {
-        const mid = parseInt(l[1]);
-        const match = WC_MATCHES.find(m => m.id === mid);
-        if (!match) return null;
-        const r = results[mid];
-        if (!r || r.status !== 'finished') return null;
-        const enriched = { ...match, ...r };
-        const winner = this.getMatchWinner(enriched);
-        if (!winner) return null;
-        const loser = winner === enriched.home ? enriched.away : enriched.home;
-        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
-        const resolved = resolveLabel(loser, seen);
-        map[label] = resolved;
-        return resolved;
-      }
-
-      return null;
-    };
-
-    // Resolve all knockout slot labels and also build per-match entries
     WC_MATCHES.filter(m => m.phase && m.phase !== 'group').forEach(m => {
-      const homeResolved = resolveLabel(m.home) || null;
-      const awayResolved = resolveLabel(m.away) || null;
-      // store both forms
+      const homeResolved = this.resolveSlot(m.home);
+      const awayResolved = this.resolveSlot(m.away);
       map[m.home] = homeResolved;
       map[m.away] = awayResolved;
       map[m.id] = { home: homeResolved, away: awayResolved };
@@ -410,15 +371,12 @@ const Tournament = {
         const pos = parseInt(posMatch[1]);
         const groups = posMatch[2].split('');
         if (pos === 3 && groups.length > 1) {
-          const candidates = [];
-          groups.forEach(g => {
+          const bestThirds = this.getPredictedBestThirds(predictions);
+          const standingsFn = g => {
             let st = this.getPredictedGroupStandings(g, predictions);
-            if (!st.length) st = this.getGroupStandings(g);
-            if (st.length >= 3) candidates.push({ teamId: st[2].team.id, ...st[2] });
-          });
-          if (!candidates.length) return null;
-          candidates.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-          map[label] = candidates[0].teamId;
+            return st.length ? st : this.getGroupStandings(g);
+          };
+          map[label] = this.resolveBestThirdSlot(posMatch[2], bestThirds, standingsFn);
           return map[label];
         } else {
           const g = posMatch[2][0];
