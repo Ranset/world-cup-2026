@@ -375,24 +375,30 @@ const Tournament = {
         return resolved;
       }
 
-      // L<number> — loser based on prediction (predict opposite winner)
+      // L<number> — loser based on prediction (the team NOT predicted to win)
       const l = label.match(/^L(\d+)$/);
       if (l) {
         const mid = parseInt(l[1]);
         const match = WC_MATCHES.find(m => m.id === mid);
         if (!match) return null;
         const pred = predictions[mid];
-        if (!pred || !pred.winner) return null;
-        // Predict the loser: opposite of predicted winner
-        const predictedWinner = pred.winner;
-        const loser = predictedWinner === 'draw' ? null : 
-                      (predictedWinner === match.home ? match.away : match.home);
+        if (!pred || !pred.winner || pred.winner === 'draw') return null;
+
+        // pred.winner is already a resolved team id, but match.home/match.away
+        // are still raw slot labels (e.g. 'W97') for any match beyond R32 —
+        // resolve both sides before comparing, otherwise the comparison never
+        // matches and this silently falls back to "always the home side".
+        const homeResolved = resolveLabel(match.home, seen);
+        const awayResolved = resolveLabel(match.away, seen);
+        const winnerResolved = WC_TEAMS[pred.winner] ? pred.winner : (resolveLabel(pred.winner, seen) || pred.winner);
+
+        let loser = null;
+        if (winnerResolved === homeResolved && awayResolved) loser = awayResolved;
+        else if (winnerResolved === awayResolved && homeResolved) loser = homeResolved;
         if (!loser) return null;
-        if (WC_TEAMS[loser]) { map[label] = loser; return loser; }
-        // If loser is a slot, resolve it recursively
-        const resolved = resolveLabel(loser, seen);
-        map[label] = resolved;
-        return resolved;
+
+        map[label] = loser;
+        return loser;
       }
 
       return null;
